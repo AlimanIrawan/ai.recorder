@@ -13,6 +13,16 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(morgan("dev"));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+  next();
+});
 
 const uploadsDir = process.env.UPLOADS_DIR || "/tmp";
 if (!fs.existsSync(uploadsDir)) {
@@ -79,6 +89,13 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
   res.set("Content-Type", "text/html; charset=utf-8");
   const file = req.file;
   const { started_at, duration_seconds, latitude, longitude, accuracy, timezone, device_model, openai_key, deepseek_key } = req.body ?? {};
+  console.log("/api/upload-audio", {
+    contentType: req.headers["content-type"],
+    hasFile: !!file,
+    started_at,
+    latitude,
+    longitude,
+  });
   if (!file) {
     res.status(400).send(htmlPage({ title: "错误", body: `<h1>缺少音频文件</h1>` }));
     return;
@@ -190,6 +207,11 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
   } finally {
     fs.unlink(tempPath, () => {});
   }
+});
+
+app.all("/api/ping", (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  res.status(200).send(JSON.stringify({ ok: true, method: req.method }));
 });
 
 app.get("/test", (req, res) => {
