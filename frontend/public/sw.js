@@ -1,5 +1,5 @@
 const CACHE_NAME = 'ai-recorder-v1';
-const PRE_CACHE = ['/', '/manifest.json', '/favicon.svg'];
+const PRE_CACHE = ['/', '/manifest.json', '/favicon.svg', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
