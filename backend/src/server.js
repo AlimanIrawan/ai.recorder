@@ -114,21 +114,19 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
     });
     const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
     summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine}</div>`;
-    try {
-      await saveRecordToSupabase({
-        text: tr.text,
-        language: tr.language || null,
-        summary: ds?.summary || null,
-        title: ds?.title || null,
-        tags: Array.isArray(ds?.tags) ? ds.tags : null,
-        started_at: started_at || null,
-        duration_seconds: duration_seconds ? Number(duration_seconds) : null,
-        latitude: latitude ? Number(latitude) : null,
-        longitude: longitude ? Number(longitude) : null,
-        accuracy: accuracy ? Number(accuracy) : null,
-        audio_url: null,
-      });
-    } catch (e) {}
+    await saveRecordToSupabase({
+      text: tr.text,
+      language: tr.language || null,
+      summary: ds?.summary || null,
+      title: ds?.title || null,
+      tags: Array.isArray(ds?.tags) ? ds.tags : null,
+      started_at: started_at || null,
+      duration_seconds: duration_seconds ? Number(duration_seconds) : null,
+      latitude: latitude ? Number(latitude) : null,
+      longitude: longitude ? Number(longitude) : null,
+      accuracy: accuracy ? Number(accuracy) : null,
+      audio_url: null,
+    });
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
     const body = `${metaHtml}${summaryBlock}<h1>转录全文</h1><pre>${tr.text}</pre>`;
     res.status(200).send(htmlPage({ title: "转录结果", body }));
@@ -178,21 +176,19 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
     });
     const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
     summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>摘要：</strong><pre>${ds2.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine2}</div>`;
-    try {
-      await saveRecordToSupabase({
-        text: tr.text,
-        language: tr.language || null,
-        summary: ds2?.summary || null,
-        title: ds2?.title || null,
-        tags: Array.isArray(ds2?.tags) ? ds2.tags : null,
-        started_at: started_at || null,
-        duration_seconds: duration_seconds ? Number(duration_seconds) : null,
-        latitude: latitude ? Number(latitude) : null,
-        longitude: longitude ? Number(longitude) : null,
-        accuracy: accuracy ? Number(accuracy) : null,
-        audio_url: audio_url || null,
-      });
-    } catch (e) {}
+    await saveRecordToSupabase({
+      text: tr.text,
+      language: tr.language || null,
+      summary: ds2?.summary || null,
+      title: ds2?.title || null,
+      tags: Array.isArray(ds2?.tags) ? ds2.tags : null,
+      started_at: started_at || null,
+      duration_seconds: duration_seconds ? Number(duration_seconds) : null,
+      latitude: latitude ? Number(latitude) : null,
+      longitude: longitude ? Number(longitude) : null,
+      accuracy: accuracy ? Number(accuracy) : null,
+      audio_url: audio_url || null,
+    });
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
     const body = `${metaHtml}${summaryBlock}<h1>转录全文</h1><pre>${tr.text}</pre>`;
     res.status(200).send(htmlPage({ title: "转录结果", body }));
@@ -212,6 +208,32 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
 app.all("/api/ping", (req, res) => {
   res.set("Content-Type", "application/json; charset=utf-8");
   res.status(200).send(JSON.stringify({ ok: true, method: req.method }));
+});
+app.post("/api/diag/supabase", async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const sb = getSupabase();
+    if (!sb) throw new Error("Supabase 未配置");
+    const probe = {
+      text: "diag",
+      language: null,
+      summary: null,
+      title: null,
+      tags: null,
+      started_at: new Date().toISOString(),
+      duration_seconds: null,
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+      audio_url: null,
+    };
+    const { data, error } = await sb.from("records").insert(probe).select().single();
+    if (error) throw new Error(error.message);
+    await sb.from("records").delete().eq("id", data.id);
+    res.status(200).send(JSON.stringify({ ok: true }));
+  } catch (e) {
+    res.status(500).send(JSON.stringify({ ok: false, error: String(e?.message || e) }));
+  }
 });
 
 app.get("/test", (req, res) => {
