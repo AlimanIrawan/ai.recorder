@@ -137,7 +137,16 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
       model: process.env.DEEPSEEK_MODEL,
     });
     const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
-    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine}</div>`;
+    let sectionsHtml = "";
+    if (Array.isArray(ds.sections) && ds.sections.length > 0) {
+      sectionsHtml = ds.sections
+        .map((sec) => {
+          const bullets = Array.isArray(sec?.bullets) ? sec.bullets.map((b) => `<li>${b}</li>`).join("") : "";
+          return `<h2 style=\"font-size:16px;margin:12px 0 4px\">${sec?.heading || "要点"}</h2><ul>${bullets}</ul>`;
+        })
+        .join("");
+    }
+    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>总览：</strong><pre>${ds.summary || ""}</pre>${sectionsHtml}<div><strong>话题：</strong>${tagsLine}</div>`;
     await saveRecordToSupabase({
       text: tr.text,
       language: tr.language || null,
@@ -199,7 +208,16 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
       model: process.env.DEEPSEEK_MODEL,
     });
     const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
-    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>摘要：</strong><pre>${ds2.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine2}</div>`;
+    let sectionsHtml2 = "";
+    if (Array.isArray(ds2.sections) && ds2.sections.length > 0) {
+      sectionsHtml2 = ds2.sections
+        .map((sec) => {
+          const bullets = Array.isArray(sec?.bullets) ? sec.bullets.map((b) => `<li>${b}</li>`).join("") : "";
+          return `<h2 style=\"font-size:16px;margin:12px 0 4px\">${sec?.heading || "要点"}</h2><ul>${bullets}</ul>`;
+        })
+        .join("");
+    }
+    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>总览：</strong><pre>${ds2.summary || ""}</pre>${sectionsHtml2}<div><strong>话题：</strong>${tagsLine2}</div>`;
     await saveRecordToSupabase({
       text: tr.text,
       language: tr.language || null,
@@ -232,6 +250,25 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
 app.all("/api/ping", (req, res) => {
   res.set("Content-Type", "application/json; charset=utf-8");
   res.status(200).send(JSON.stringify({ ok: true, method: req.method }));
+});
+app.post("/api/update-record", express.json({ limit: "1mb" }), async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const { id, title, summary } = req.body ?? {};
+    const rid = Number(id);
+    if (!rid || rid <= 0) throw new Error("缺少有效 id");
+    const sb = getSupabase();
+    if (!sb) throw new Error("Supabase 未配置");
+    const payload = {};
+    if (typeof title === "string") payload.title = title;
+    if (typeof summary === "string") payload.summary = summary;
+    if (!Object.keys(payload).length) throw new Error("缺少可更新字段");
+    const { data, error } = await sb.from("records").update(payload).eq("id", rid).select().single();
+    if (error) throw new Error(error.message);
+    res.status(200).send(JSON.stringify({ ok: true, data }));
+  } catch (e) {
+    res.status(400).send(JSON.stringify({ ok: false, error: String(e?.message || e) }));
+  }
 });
 app.post("/api/diag/supabase", async (req, res) => {
   res.set("Content-Type", "application/json; charset=utf-8");
@@ -290,8 +327,8 @@ async function deepseekSummarize({ text, meta, apiKey, baseUrl, model }) {
     "Authorization": `Bearer ${apiKey}`,
     "Content-Type": "application/json",
   };
-  const system = "你是一个信息整理助手。根据给定转录文本，用中文输出摘要、标题以及多主题标签。严格输出 JSON：{\"summary\":\"...\",\"title\":\"...\",\"tags\":[\"#话题1\",\"#话题2\"]}；不要输出其它内容。标签不超过6个，简短、贴近内容。";
-  const user = `转录文本：\n${text}\n\n元数据：${JSON.stringify(meta)}`;
+  const system = "你是一个信息整理助手。根据给定转录文本，用中文输出结构化总结。严格输出 JSON：{\"title\":\"...\",\"summary\":\"一句话总览\",\"sections\":[{\"heading\":\"部分名称\",\"bullets\":[\"要点1\",\"要点2\"]}],\"tags\":[\"#大类1\",\"#大类2\"]}；不要输出其它内容。要求：1）sections 使用列表项目，覆盖不同主题块；2）bullets 简短且信息密度高；3）tags 仅保留最重要的大类（如 #农业、#财务），数量≤3；4）避免冗长。";
+  const user = `转录文本：\n${text}\n\n元数据（可能为空）：${JSON.stringify(meta)}`;
   const body = {
     model: model || "deepseek-chat",
     messages: [
@@ -308,7 +345,7 @@ async function deepseekSummarize({ text, meta, apiKey, baseUrl, model }) {
   try {
     parsed = JSON.parse(content);
   } catch {
-    parsed = { summary: content, title: "", tags: [] };
+    parsed = { summary: content, title: "", tags: [], sections: [] };
   }
   return parsed;
 }

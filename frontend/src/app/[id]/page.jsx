@@ -3,9 +3,14 @@ import { supabase } from "../../lib/supabase";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 export default function Detail({ params }) {
   const id = Number(params.id);
   const [item, setItem] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSummary, setEditSummary] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -14,7 +19,11 @@ export default function Detail({ params }) {
         .select("*")
         .eq("id", id)
         .single();
-      if (!error) setItem(data);
+      if (!error) {
+        setItem(data);
+        setEditTitle(data?.title || "");
+        setEditSummary(data?.summary || "");
+      }
     })();
   }, [id]);
 
@@ -42,6 +51,32 @@ export default function Detail({ params }) {
       </div>
       {item.summary && <h2 style={{ fontSize: 18 }}>摘要</h2>}
       {item.summary && <pre style={{ whiteSpace: "pre-wrap" }}>{item.summary}</pre>}
+      <div style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 12 }}>
+        <h2 style={{ fontSize: 18 }}>编辑</h2>
+        {!BACKEND && <div style={{ color: '#b00' }}>缺少后端地址环境变量 NEXT_PUBLIC_BACKEND_URL</div>}
+        <div>
+          <label>标题：<input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} style={{ width: '100%' }} /></label>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <label>摘要：<textarea value={editSummary} onChange={(e) => setEditSummary(e.target.value)} rows={6} style={{ width: '100%' }} /></label>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <button disabled={saving || !BACKEND} onClick={async () => {
+            setSaving(true);
+            try {
+              const r = await fetch(`${BACKEND}/api/update-record`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, title: editTitle, summary: editSummary }),
+              });
+              const j = await r.json();
+              if (j?.ok) setItem(j.data);
+            } finally {
+              setSaving(false);
+            }
+          }}>保存</button>
+        </div>
+      </div>
       {Array.isArray(item.tags) && item.tags.length > 0 && (
         <div style={{ marginTop: 8 }}>
           {item.tags.map((t, i) => (
