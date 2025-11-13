@@ -87,18 +87,16 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
     const tr = await transcribeFile(file.path, openai_key);
     let summaryBlock = "";
     const deepseekKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
-    let ds = null;
-    if (deepseekKey) {
-      ds = await deepseekSummarize({
-        text: tr.text,
-        meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-        apiKey: deepseekKey,
-        baseUrl: process.env.DEEPSEEK_BASE_URL,
-        model: process.env.DEEPSEEK_MODEL,
-      });
-      const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
-      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine}</div>`;
-    }
+    if (!deepseekKey) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
+    const ds = await deepseekSummarize({
+      text: tr.text,
+      meta: { started_at, duration_seconds, latitude, longitude, accuracy },
+      apiKey: deepseekKey,
+      baseUrl: process.env.DEEPSEEK_BASE_URL,
+      model: process.env.DEEPSEEK_MODEL,
+    });
+    const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
+    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine}</div>`;
     try {
       await saveRecordToSupabase({
         text: tr.text,
@@ -153,18 +151,16 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
     const tr = await transcribeFile(tempPath, openai_key);
     let summaryBlock = "";
     const deepseekKey2 = deepseek_key || process.env.DEEPSEEK_API_KEY;
-    let ds2 = null;
-    if (deepseekKey2) {
-      ds2 = await deepseekSummarize({
-        text: tr.text,
-        meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-        apiKey: deepseekKey2,
-        baseUrl: process.env.DEEPSEEK_BASE_URL,
-        model: process.env.DEEPSEEK_MODEL,
-      });
-      const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
-      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>摘要：</strong><pre>${ds2.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine2}</div>`;
-    }
+    if (!deepseekKey2) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
+    const ds2 = await deepseekSummarize({
+      text: tr.text,
+      meta: { started_at, duration_seconds, latitude, longitude, accuracy },
+      apiKey: deepseekKey2,
+      baseUrl: process.env.DEEPSEEK_BASE_URL,
+      model: process.env.DEEPSEEK_MODEL,
+    });
+    const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
+    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>摘要：</strong><pre>${ds2.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine2}</div>`;
     try {
       await saveRecordToSupabase({
         text: tr.text,
