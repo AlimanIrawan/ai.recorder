@@ -86,11 +86,12 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
   try {
     const tr = await transcribeFile(file.path, openai_key);
     let summaryBlock = "";
-    if (deepseek_key) {
+    const deepseekKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
+    if (deepseekKey) {
       const ds = await deepseekSummarize({
         text: tr.text,
         meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-        apiKey: deepseek_key,
+        apiKey: deepseekKey,
         baseUrl: process.env.DEEPSEEK_BASE_URL,
         model: process.env.DEEPSEEK_MODEL,
       });
@@ -150,11 +151,12 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
     });
     const tr = await transcribeFile(tempPath, openai_key);
     let summaryBlock = "";
-    if (deepseek_key) {
+    const deepseekKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
+    if (deepseekKey) {
       const ds = await deepseekSummarize({
         text: tr.text,
         meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-        apiKey: deepseek_key,
+        apiKey: deepseekKey,
         baseUrl: process.env.DEEPSEEK_BASE_URL,
         model: process.env.DEEPSEEK_MODEL,
       });
