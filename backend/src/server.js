@@ -87,32 +87,33 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
     const tr = await transcribeFile(file.path, openai_key);
     let summaryBlock = "";
     const deepseekKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
+    let ds = null;
     if (deepseekKey) {
-      const ds = await deepseekSummarize({
+      ds = await deepseekSummarize({
         text: tr.text,
         meta: { started_at, duration_seconds, latitude, longitude, accuracy },
         apiKey: deepseekKey,
         baseUrl: process.env.DEEPSEEK_BASE_URL,
         model: process.env.DEEPSEEK_MODEL,
       });
-      const tags = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
-      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tags}</div>`;
-      try {
-        await saveRecordToSupabase({
-          text: tr.text,
-          language: tr.language || null,
-          summary: ds.summary || null,
-          title: ds.title || null,
-          tags: Array.isArray(ds.tags) ? ds.tags : null,
-          started_at: started_at || null,
-          duration_seconds: duration_seconds ? Number(duration_seconds) : null,
-          latitude: latitude ? Number(latitude) : null,
-          longitude: longitude ? Number(longitude) : null,
-          accuracy: accuracy ? Number(accuracy) : null,
-          audio_url: null,
-        });
-      } catch (e) {}
+      const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
+      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine}</div>`;
     }
+    try {
+      await saveRecordToSupabase({
+        text: tr.text,
+        language: tr.language || null,
+        summary: ds?.summary || null,
+        title: ds?.title || null,
+        tags: Array.isArray(ds?.tags) ? ds.tags : null,
+        started_at: started_at || null,
+        duration_seconds: duration_seconds ? Number(duration_seconds) : null,
+        latitude: latitude ? Number(latitude) : null,
+        longitude: longitude ? Number(longitude) : null,
+        accuracy: accuracy ? Number(accuracy) : null,
+        audio_url: null,
+      });
+    } catch (e) {}
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
     const body = `${metaHtml}${summaryBlock}<h1>转录全文</h1><pre>${tr.text}</pre>`;
     res.status(200).send(htmlPage({ title: "转录结果", body }));
@@ -151,33 +152,34 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
     });
     const tr = await transcribeFile(tempPath, openai_key);
     let summaryBlock = "";
-    const deepseekKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
-    if (deepseekKey) {
-      const ds = await deepseekSummarize({
+    const deepseekKey2 = deepseek_key || process.env.DEEPSEEK_API_KEY;
+    let ds2 = null;
+    if (deepseekKey2) {
+      ds2 = await deepseekSummarize({
         text: tr.text,
         meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-        apiKey: deepseekKey,
+        apiKey: deepseekKey2,
         baseUrl: process.env.DEEPSEEK_BASE_URL,
         model: process.env.DEEPSEEK_MODEL,
       });
-      const tags = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
-      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>摘要：</strong><pre>${ds.summary || ""}</pre></div><div><strong>话题：</strong>${tags}</div>`;
-      try {
-        await saveRecordToSupabase({
-          text: tr.text,
-          language: tr.language || null,
-          summary: ds.summary || null,
-          title: ds.title || null,
-          tags: Array.isArray(ds.tags) ? ds.tags : null,
-          started_at: started_at || null,
-          duration_seconds: duration_seconds ? Number(duration_seconds) : null,
-          latitude: latitude ? Number(latitude) : null,
-          longitude: longitude ? Number(longitude) : null,
-          accuracy: accuracy ? Number(accuracy) : null,
-          audio_url: audio_url || null,
-        });
-      } catch (e) {}
+      const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
+      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>摘要：</strong><pre>${ds2.summary || ""}</pre></div><div><strong>话题：</strong>${tagsLine2}</div>`;
     }
+    try {
+      await saveRecordToSupabase({
+        text: tr.text,
+        language: tr.language || null,
+        summary: ds2?.summary || null,
+        title: ds2?.title || null,
+        tags: Array.isArray(ds2?.tags) ? ds2.tags : null,
+        started_at: started_at || null,
+        duration_seconds: duration_seconds ? Number(duration_seconds) : null,
+        latitude: latitude ? Number(latitude) : null,
+        longitude: longitude ? Number(longitude) : null,
+        accuracy: accuracy ? Number(accuracy) : null,
+        audio_url: audio_url || null,
+      });
+    } catch (e) {}
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
     const body = `${metaHtml}${summaryBlock}<h1>转录全文</h1><pre>${tr.text}</pre>`;
     res.status(200).send(htmlPage({ title: "转录结果", body }));
