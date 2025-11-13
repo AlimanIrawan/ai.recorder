@@ -79,6 +79,30 @@ async function transcribeFile(filePath, apiKey) {
   return resp;
 }
 
+function normalizeStartedAt(value) {
+  if (!value) return new Date().toISOString();
+  const d = new Date(value);
+  if (!Number.isNaN(d.getTime())) return d.toISOString();
+  const m = String(value).match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) {
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const da = Number(m[3]);
+    const h = Number(m[4]);
+    const mi = Number(m[5]);
+    const s = m[6] ? Number(m[6]) : 0;
+    const dt = new Date(Date.UTC(y, mo - 1, da, h, mi, s));
+    return dt.toISOString();
+  }
+  return new Date().toISOString();
+}
+
+function toNumberOrNull(v) {
+  if (v === undefined || v === null || v === "") return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+}
+
 app.get("/", (req, res) => {
   const body = `<h1>音频上传与转录</h1><div>POST 到 <code>/api/upload-audio</code> 以 <code>multipart/form-data</code> 方式上传音频与元数据。</div>`;
   res.set("Content-Type", "text/html; charset=utf-8");
@@ -120,11 +144,11 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
       summary: ds?.summary || null,
       title: ds?.title || null,
       tags: Array.isArray(ds?.tags) ? ds.tags : null,
-      started_at: started_at || null,
-      duration_seconds: duration_seconds ? Number(duration_seconds) : null,
-      latitude: latitude ? Number(latitude) : null,
-      longitude: longitude ? Number(longitude) : null,
-      accuracy: accuracy ? Number(accuracy) : null,
+      started_at: normalizeStartedAt(started_at),
+      duration_seconds: toNumberOrNull(duration_seconds),
+      latitude: toNumberOrNull(latitude),
+      longitude: toNumberOrNull(longitude),
+      accuracy: toNumberOrNull(accuracy),
       audio_url: null,
     });
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
@@ -182,11 +206,11 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
       summary: ds2?.summary || null,
       title: ds2?.title || null,
       tags: Array.isArray(ds2?.tags) ? ds2.tags : null,
-      started_at: started_at || null,
-      duration_seconds: duration_seconds ? Number(duration_seconds) : null,
-      latitude: latitude ? Number(latitude) : null,
-      longitude: longitude ? Number(longitude) : null,
-      accuracy: accuracy ? Number(accuracy) : null,
+      started_at: normalizeStartedAt(started_at),
+      duration_seconds: toNumberOrNull(duration_seconds),
+      latitude: toNumberOrNull(latitude),
+      longitude: toNumberOrNull(longitude),
+      accuracy: toNumberOrNull(accuracy),
       audio_url: audio_url || null,
     });
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
