@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#111"/>
+  <g transform="translate(156,116)">
+    <rect x="64" y="0" width="112" height="208" rx="56" fill="#9cf"/>
+    <path d="M0 208h48c0 70 56 112 112 112s112-42 112-112h48c0 96-72 160-160 160S0 304 0 208z" fill="#6af"/>
+    <rect x="144" y="336" width="48" height="40" rx="12" fill="#6af"/>
+  </g>
+  <text x="256" y="480" font-size="64" text-anchor="middle" fill="#9cf" font-family="system-ui, -apple-system, Segoe UI, Roboto">AI</text>
+</svg>
