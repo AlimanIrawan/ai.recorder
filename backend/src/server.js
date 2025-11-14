@@ -48,6 +48,14 @@ const upload = multer({
   },
 });
 
+function getOAuth2Client() {
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || "https://android-recorder-backend.onrender.com/oauth2callback";
+  if (!clientId || !clientSecret || !redirectUri) throw new Error("缺少 OAuth2 配置（GOOGLE_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI）");
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+}
+
 function getClient(keyOverride) {
   const key = keyOverride || process.env.OPENAI_API_KEY;
   if (!key) throw new Error("缺少 OpenAI API Key（可在表单提供 openai_key 或设置 OPENAI_API_KEY）");
@@ -108,6 +116,40 @@ app.get("/", (req, res) => {
   const body = `<h1>音频上传与转录</h1><div>POST 到 <code>/api/upload-audio</code> 以 <code>multipart/form-data</code> 方式上传音频与元数据。</div>`;
   res.set("Content-Type", "text/html; charset=utf-8");
   res.status(200).send(htmlPage({ title: "音频上传与转录", body }));
+});
+
+app.get("/auth/start", (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const oauth2 = getOAuth2Client();
+    const scopes = ["https://www.googleapis.com/auth/drive"];
+    const url = oauth2.generateAuthUrl({ access_type: "offline", prompt: "consent", scope: scopes });
+    res.status(200).send(JSON.stringify({ url }));
+  } catch (e) {
+    res.status(500).send(JSON.stringify({ error: String(e?.message || e) }));
+  }
+});
+
+app.get("/oauth2callback", async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const code = req.query.code;
+    if (!code) {
+      res.status(400).send(JSON.stringify({ error: "缺少 code" }));
+      return;
+    }
+    const oauth2 = getOAuth2Client();
+    const { tokens } = await oauth2.getToken(code);
+    res.status(200).send(JSON.stringify({ refresh_token: tokens.refresh_token, access_token: tokens.access_token, expiry_date: tokens.expiry_date }));
+  } catch (e) {
+    const msg = String(e?.message || e);
+    let details = undefined;
+    try {
+      const obj = JSON.parse(JSON.stringify(e, Object.getOwnPropertyNames(e)));
+      details = obj;
+    } catch {}
+    res.status(500).send(JSON.stringify({ error: msg, details }));
+  }
 });
 
 app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
@@ -176,6 +218,40 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
     if (file?.path) {
       fs.unlink(file.path, () => {});
     }
+  }
+});
+
+app.post("/upload", upload.single("file"), async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const file = req.file;
+    const { folderId, name, mime } = req.body ?? {};
+    if (!file || !folderId || !name || !mime) {
+      res.status(400).send(JSON.stringify({ error: "invalid input" }));
+      return;
+    }
+    const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+    if (!refreshToken) {
+      res.status(500).send(JSON.stringify({ error: "missing oauth refresh token" }));
+      return;
+    }
+    const oauth2 = getOAuth2Client();
+    oauth2.setCredentials({ refresh_token: refreshToken });
+    const drive = google.drive({ version: "v3", auth: oauth2 });
+    const bodyStream = fs.createReadStream(file.path);
+    const resp = await drive.files.create({
+      requestBody: { name, parents: [folderId], mimeType: mime },
+      media: { mimeType: mime, body: bodyStream },
+    });
+    res.status(200).send(JSON.stringify({ id: resp?.data?.id }));
+  } catch (e) {
+    const msg = String(e?.message || e);
+    let details = undefined;
+    try {
+      const obj = JSON.parse(JSON.stringify(e, Object.getOwnPropertyNames(e)));
+      details = obj?.response?.data ?? obj;
+    } catch {}
+    res.status(500).send(JSON.stringify({ error: msg, details }));
   }
 });
 
