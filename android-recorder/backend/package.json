@@ -1,0 +1,14 @@
+{
+  "name": "ai-recorder-backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "googleapis": "^131.0.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}
