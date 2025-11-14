@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import OpenAI from "openai";
 import { fetch } from "undici";
 import { createClient } from "@supabase/supabase-js";
+import { google } from "googleapis";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -363,4 +364,109 @@ async function saveRecordToSupabase(record) {
   const { data, error } = await sb.from("records").insert(record).select().single();
   if (error) throw new Error(error.message);
   return { id: data?.id };
+}
+
+function getDriveContext() {
+  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!email || !key || !folderId) return null;
+  const auth = new google.auth.JWT({ email, key: key.replace(/\\n/g, "\n"), scopes: ["https://www.googleapis.com/auth/drive.readonly"] });
+  const drive = google.drive({ version: "v3", auth });
+  return { drive, folderId };
+}
+
+function isAudioFile(f) {
+  const mt = String(f?.mimeType || "");
+  if (mt.startsWith("audio/")) return true;
+  const ext = path.extname(String(f?.name || "")).toLowerCase();
+  return [".m4a", ".mp3", ".wav", ".aac", ".flac", ".caf", ".m4r", ".ogg"].includes(ext);
+}
+
+async function listDriveAudio(drive, folderId, pageSize) {
+  const q = `'${folderId}' in parents and trashed = false`;
+  const fields = "files(id,name,mimeType,createdTime,modifiedTime,size),nextPageToken";
+  const r = await drive.files.list({ q, fields, orderBy: "createdTime desc", pageSize: pageSize || 10 });
+  const files = Array.isArray(r?.data?.files) ? r.data.files : [];
+  return files.filter(isAudioFile);
+}
+
+async function existsDriveRecord(fileId) {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { data, error } = await sb.from("records").select("id").eq("audio_url", `drive:${fileId}`).limit(1);
+  if (error) throw new Error(error.message);
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function downloadDriveFile(drive, fileId, fileName) {
+  const ext = path.extname(fileName || "") || ".m4a";
+  const tempPath = path.join(uploadsDir, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  const resp = await drive.files.get({ fileId, alt: "media" }, { responseType: "stream" });
+  await new Promise((resolve, reject) => {
+    const ws = fs.createWriteStream(tempPath);
+    resp.data.pipe(ws);
+    resp.data.on("error", reject);
+    ws.on("finish", resolve);
+    ws.on("error", reject);
+  });
+  return tempPath;
+}
+
+async function processDriveFile(ctx, file) {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  if (!deepseekKey) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
+  const done = await existsDriveRecord(file.id);
+  if (done) return { skipped: true, id: file.id };
+  const temp = await downloadDriveFile(ctx.drive, file.id, file.name);
+  try {
+    const tr = await transcribeFile(temp);
+    const ds = await deepseekSummarize({ text: tr.text, meta: { started_at: file.createdTime }, apiKey: deepseekKey, baseUrl: process.env.DEEPSEEK_BASE_URL, model: process.env.DEEPSEEK_MODEL });
+    await saveRecordToSupabase({ text: tr.text, language: tr.language || null, summary: ds?.summary || null, title: ds?.title || null, tags: Array.isArray(ds?.tags) ? ds.tags : null, started_at: normalizeStartedAt(file.createdTime), duration_seconds: null, latitude: null, longitude: null, accuracy: null, audio_url: `drive:${file.id}` });
+    return { skipped: false, id: file.id };
+  } finally {
+    fs.unlink(temp, () => {});
+  }
+}
+
+async function syncDriveRun() {
+  const ctx = getDriveContext();
+  if (!ctx) throw new Error("缺少 Google Drive 配置（GOOGLE_SERVICE_ACCOUNT_EMAIL/GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY/GOOGLE_DRIVE_FOLDER_ID）");
+  const limit = Number(process.env.DRIVE_SYNC_MAX_PER_RUN || 3);
+  const pageSize = Number(process.env.DRIVE_SYNC_PAGE_SIZE || 10);
+  const files = await listDriveAudio(ctx.drive, ctx.folderId, pageSize);
+  const targets = files.slice(0, limit);
+  const results = [];
+  for (const f of targets) {
+    try {
+      const r = await processDriveFile(ctx, f);
+      results.push({ id: f.id, name: f.name, ok: !r.skipped, skipped: !!r.skipped });
+    } catch (e) {
+      results.push({ id: f.id, name: f.name, ok: false, error: String(e?.message || e) });
+    }
+  }
+  return { count: results.filter((x) => x.ok).length, processed: results };
+}
+
+app.post("/api/sync-drive", async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const r = await syncDriveRun();
+    res.status(200).send(JSON.stringify({ ok: true, ...r }));
+  } catch (e) {
+    res.status(400).send(JSON.stringify({ ok: false, error: String(e?.message || e) }));
+  }
+});
+
+let syncLock = false;
+const intervalMin = Number(process.env.DRIVE_SYNC_INTERVAL_MINUTES || 0);
+if (intervalMin > 0) {
+  setInterval(async () => {
+    if (syncLock) return;
+    syncLock = true;
+    try {
+      await syncDriveRun();
+    } catch {}
+    syncLock = false;
+  }, intervalMin * 60 * 1000);
 }
