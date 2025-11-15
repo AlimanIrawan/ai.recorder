@@ -51,6 +51,8 @@ export default function Detail({ params }) {
       </div>
       {item.summary && <h2 style={{ fontSize: 18 }}>摘要</h2>}
       {item.summary && <pre style={{ whiteSpace: "pre-wrap" }}>{item.summary}</pre>}
+      {item.note_text && <h2 style={{ fontSize: 18 }}>笔记</h2>}
+      {item.note_text && <pre style={{ whiteSpace: "pre-wrap" }}>{item.note_text}</pre>}
       <div style={{ marginTop: 16, borderTop: '1px solid #eee', paddingTop: 12 }}>
         <h2 style={{ fontSize: 18 }}>编辑</h2>
         {!BACKEND && <div style={{ color: '#b00' }}>缺少后端地址环境变量 NEXT_PUBLIC_BACKEND_URL</div>}

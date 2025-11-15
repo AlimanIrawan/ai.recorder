@@ -437,7 +437,13 @@ function getSupabase() {
 async function saveRecordToSupabase(record) {
   const sb = getSupabase();
   if (!sb) return { skipped: true };
-  const { data, error } = await sb.from("records").insert(record).select().single();
+  let { data, error } = await sb.from("records").insert(record).select().single();
+  if (error && (/note_text|drive_file_id|file_name/.test(String(error.message || error)))) {
+    const { note_text, drive_file_id, file_name, ...rest } = record || {};
+    const r2 = await sb.from("records").insert(rest).select().single();
+    if (r2.error) throw new Error(r2.error.message);
+    return { id: r2.data?.id };
+  }
   if (error) throw new Error(error.message);
   return { id: data?.id };
 }
@@ -449,6 +455,19 @@ function getDriveContext() {
   if (!email || !key || !folderId) return null;
   const auth = new google.auth.JWT({ email, key: key.replace(/\\n/g, "\n"), scopes: ["https://www.googleapis.com/auth/drive.readonly"] });
   const drive = google.drive({ version: "v3", auth });
+  return { drive, folderId };
+}
+
+function getDriveContextOAuth() {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || "https://android-recorder-backend.onrender.com/oauth2callback";
+  if (!folderId || !clientId || !clientSecret || !refreshToken) return null;
+  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
+  oauth2.setCredentials({ refresh_token: refreshToken });
+  const drive = google.drive({ version: "v3", auth: oauth2 });
   return { drive, folderId };
 }
 
@@ -505,9 +524,50 @@ async function processDriveFile(ctx, file) {
   }
 }
 
+// 增强版：同时读取同名 .txt 记录并合并到摘要/标题中
+async function processDriveFileWithNote(ctx, file) {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  if (!deepseekKey) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
+  const done = await existsDriveRecord(file.id);
+  if (done) return { skipped: true, id: file.id };
+  const temp = await downloadDriveFile(ctx.drive, file.id, file.name);
+  const base = String(file.name || "").replace(/\.[^./]+$/, "");
+  let noteText = null;
+  try {
+    const q = `'${ctx.folderId}' in parents and trashed = false and name = '${base}.txt'`;
+    const r = await ctx.drive.files.list({ q, fields: "files(id,name,mimeType,createdTime)", pageSize: 1 });
+    const txtFile = Array.isArray(r?.data?.files) ? r.data.files[0] : null;
+    if (txtFile?.id) {
+      const streamResp = await ctx.drive.files.get({ fileId: txtFile.id, alt: "media" }, { responseType: "stream" });
+      noteText = await new Promise((resolve, reject) => {
+        let acc = "";
+        streamResp.data.on("data", (chunk) => {
+          acc += chunk.toString("utf-8");
+        });
+        streamResp.data.on("end", () => resolve(acc));
+        streamResp.data.on("error", reject);
+      });
+      if (typeof noteText === "string") noteText = noteText.trim();
+    }
+  } catch {}
+  try {
+    const tr = await transcribeFile(temp);
+    const ds = await deepseekSummarize({ text: tr.text, meta: { started_at: file.createdTime, note_text: noteText || null }, apiKey: deepseekKey, baseUrl: process.env.DEEPSEEK_BASE_URL, model: process.env.DEEPSEEK_MODEL });
+    let titleOut = ds?.title || null;
+    if (!titleOut && noteText) {
+      const firstLine = noteText.split(/\r?\n/)[0]?.trim();
+      if (firstLine) titleOut = firstLine;
+    }
+    await saveRecordToSupabase({ text: tr.text, language: tr.language || null, summary: ds?.summary || null, title: titleOut, tags: Array.isArray(ds?.tags) ? ds.tags : null, started_at: normalizeStartedAt(file.createdTime), duration_seconds: null, latitude: null, longitude: null, accuracy: null, audio_url: `drive:${file.id}`, note_text: noteText || null, drive_file_id: file.id, file_name: file.name });
+    return { skipped: false, id: file.id };
+  } finally {
+    fs.unlink(temp, () => {});
+  }
+}
+
 async function syncDriveRun() {
-  const ctx = getDriveContext();
-  if (!ctx) throw new Error("缺少 Google Drive 配置（GOOGLE_SERVICE_ACCOUNT_EMAIL/GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY/GOOGLE_DRIVE_FOLDER_ID）");
+  const ctx = getDriveContext() || getDriveContextOAuth();
+  if (!ctx) throw new Error("缺少 Google Drive 配置（服务账号或 OAuth 刷新令牌 + GOOGLE_DRIVE_FOLDER_ID）");
   const limit = Number(process.env.DRIVE_SYNC_MAX_PER_RUN || 3);
   const pageSize = Number(process.env.DRIVE_SYNC_PAGE_SIZE || 10);
   const files = await listDriveAudio(ctx.drive, ctx.folderId, pageSize);
@@ -515,7 +575,7 @@ async function syncDriveRun() {
   const results = [];
   for (const f of targets) {
     try {
-      const r = await processDriveFile(ctx, f);
+      const r = await processDriveFileWithNote(ctx, f);
       results.push({ id: f.id, name: f.name, ok: !r.skipped, skipped: !!r.skipped });
     } catch (e) {
       results.push({ id: f.id, name: f.name, ok: false, error: String(e?.message || e) });
