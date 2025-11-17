@@ -1,8 +1,9 @@
 const express = require('express')
 const cors = require('cors')
 const multer = require('multer')
-const { google } = require('googleapis')
-const stream = require('stream')
+const OpenAI = require('openai')
+const { toFile } = require('openai/uploads')
+const axios = require('axios')
 
 const app = express()
 app.use(cors())
@@ -10,61 +11,88 @@ app.use(express.json())
 
 const upload = multer({ storage: multer.memoryStorage() })
 
-function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID
-  const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || 'https://android-recorder-backend.onrender.com/oauth2callback'
-  if (!clientId || !clientSecret || !redirectUri) throw new Error('missing oauth client config')
-  return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY
+  const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com'
+  if (!key) throw new Error('OPENAI_API_KEY missing')
+  return new OpenAI({ apiKey: key, baseURL })
 }
 
-app.get('/', (req, res) => { res.json({ ok: true }) })
-
-app.get('/auth/start', (req, res) => {
-  try {
-    const oauth2 = getOAuth2Client()
-    const scopes = ['https://www.googleapis.com/auth/drive']
-    const url = oauth2.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: scopes })
-    res.json({ url })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
+async function deepseekSummarize(text) {
+  const key = process.env.DEEPSEEK_API_KEY
+  const base = process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
+  const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+  if (!key) throw new Error('DEEPSEEK_API_KEY missing')
+  const url = `${base}/chat/completions`
+  const payload = {
+    model,
+    messages: [
+      { role: 'system', content: '你是一个会议记录助手。请从提供的转录文本中生成一个简洁的标题和详细的会议总结。以JSON返回：{"title":"...","summary":"..."}。' },
+      { role: 'user', content: text }
+    ]
   }
-})
-
-app.get('/oauth2callback', async (req, res) => {
+  const resp = await axios.post(url, payload, { headers: { Authorization: `Bearer ${key}` } })
+  const content = resp.data?.choices?.[0]?.message?.content || ''
   try {
-    const code = req.query.code
-    if (!code) return res.status(400).json({ error: 'missing code' })
-    const oauth2 = getOAuth2Client()
-    const { tokens } = await oauth2.getToken(code)
-    res.json({ refresh_token: tokens.refresh_token, access_token: tokens.access_token, expiry_date: tokens.expiry_date })
-  } catch (e) {
-    const code = e.code || 500
-    const details = e.response && e.response.data ? e.response.data : undefined
-    res.status(code).json({ error: e.message, details })
+    const obj = JSON.parse(content)
+    return { title: obj.title || '', summary: obj.summary || content }
+  } catch (_) {
+    return { title: '', summary: content }
   }
-})
+}
 
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.get('/api/ping', (req, res) => { res.json({ ok: true }) })
+
+// 1) 仅转录
+app.post('/api/transcribe', upload.single('file'), async (req, res) => {
   try {
-    const { folderId, name, mime } = req.body
     const file = req.file
-    if (!folderId || !name || !mime || !file) return res.status(400).json({ error: 'invalid input' })
-    const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN
-    if (!refreshToken) return res.status(500).json({ error: 'missing oauth refresh token' })
-    const oauth2 = getOAuth2Client()
-    oauth2.setCredentials({ refresh_token: refreshToken })
-    const drive = google.drive({ version: 'v3', auth: oauth2 })
-    const body = stream.Readable.from(file.buffer)
-    const resp = await drive.files.create({
-      requestBody: { name, parents: [folderId], mimeType: mime },
-      media: { mimeType: mime, body }
-    })
-    res.json({ id: resp.data.id })
+    if (!file) return res.status(400).json({ error: 'file missing' })
+    const client = getOpenAI()
+    const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
+    const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
+    const tr = await client.audio.transcriptions.create({ file: ofile, model })
+    res.json({ text: tr.text || '' })
   } catch (e) {
-    const code = e.code || 500
-    const details = e.response && e.response.data ? e.response.data : undefined
-    res.status(code).json({ error: e.message, details })
+    const code = e.status || 500
+    res.status(code).json({ error: e.message })
+  }
+})
+
+// 2) 转录 + 总结
+app.post('/api/transcribe-and-summarize', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file
+    if (!file) return res.status(400).json({ error: 'file missing' })
+    const client = getOpenAI()
+    const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
+    const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
+    const tr = await client.audio.transcriptions.create({ file: ofile, model })
+    const text = tr.text || ''
+    let title = ''
+    let summary = ''
+    try {
+      const s = await deepseekSummarize(text)
+      title = s.title
+      summary = s.summary
+    } catch (_) {}
+    res.json({ text, title, summary })
+  } catch (e) {
+    const code = e.status || 500
+    res.status(code).json({ error: e.message })
+  }
+})
+
+// 3) 单独总结
+app.post('/api/summarize', async (req, res) => {
+  try {
+    const { text } = req.body || {}
+    if (!text || !text.trim()) return res.status(400).json({ error: 'text missing' })
+    const s = await deepseekSummarize(text)
+    res.json(s)
+  } catch (e) {
+    const code = e.status || 500
+    res.status(code).json({ error: e.message })
   }
 })
 
