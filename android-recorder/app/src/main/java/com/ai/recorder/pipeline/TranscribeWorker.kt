@@ -34,12 +34,10 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
         try {
             Log.i("TranscribeWorker", "start sid=$sessionId uri=$audioUri")
             kotlinx.coroutines.runBlocking { db.sessionDao().updateTranscript(sessionId, null, null, AudioState.transcribing.name, now) }
-            val transcript = tryOpenAI(sessionId, audioUri)
-            kotlinx.coroutines.runBlocking { db.sessionDao().updateTranscript(sessionId, transcript.text, transcript.source, AudioState.done.name, now) }
-            // set summary state to waiting_network before enqueue
-            kotlinx.coroutines.runBlocking { db.sessionDao().updateSummaryState(sessionId, SummaryState.waiting_network.name, now) }
-            LocalPipeline.enqueueSummarize(applicationContext, sessionId)
-            Log.i("TranscribeWorker", "success sid=$sessionId src=${'$'}{transcript.source} len=${'$'}{transcript.text.length}")
+            val combined = runBackendTranscribeAndSummarize(audioUri)
+            kotlinx.coroutines.runBlocking { db.sessionDao().updateTranscript(sessionId, combined.text, combined.source, AudioState.done.name, now) }
+            kotlinx.coroutines.runBlocking { db.sessionDao().updateSummaryWithTitle(sessionId, combined.title, combined.summary, SummaryState.done.name, now) }
+            Log.i("TranscribeWorker", "success sid=$sessionId src=${'$'}{combined.source} len=${'$'}{combined.text.length}")
             return Result.success()
         } catch (e: Exception) {
             Log.e("TranscribeWorker", "error sid=$sessionId ${e.message}", e)
@@ -65,15 +63,31 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
     }
 
     private data class TrOut(val text: String, val source: String)
+    private data class CombinedOut(val text: String, val title: String?, val summary: String?, val source: String)
 
-    private fun tryOpenAI(sessionId: String, audioUri: String): TrOut {
-        val key = BuildConfig.OPENAI_API_KEY
-        val base = BuildConfig.OPENAI_BASE_URL
-        val model = BuildConfig.OPENAI_WHISPER_MODEL
-        if (key.isEmpty()) throw RuntimeException("openai_api_key_missing")
-        val url = "$base/v1/audio/transcriptions"
-        val text = runOpenAITranscription(url, key, model, audioUri)
-        return TrOut(text, "openai:$model")
+    private fun runBackendTranscribeAndSummarize(audioUri: String): CombinedOut {
+        val base = BuildConfig.BACKEND_TRANSCRIBE_URL
+        if (base.isEmpty()) throw RuntimeException("backend_url_missing")
+        val url = if (base.endsWith("/")) base + "api/transcribe-and-summarize" else "$base/api/transcribe-and-summarize"
+        val uri = Uri.parse(audioUri)
+        val tmp = File.createTempFile("ts_", ".m4a", applicationContext.cacheDir)
+        applicationContext.contentResolver.openInputStream(uri)?.use { input ->
+            tmp.outputStream().use { input.copyTo(it) }
+        } ?: throw IllegalStateException("no audio input")
+        val body = tmp.asRequestBody("audio/mp4".toMediaType())
+        val form = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("file", "audio.m4a", body)
+            .build()
+        val req = Request.Builder().url(url).post(form).build()
+        client.newCall(req).execute().use { resp ->
+            val txt = resp.body?.string() ?: ""
+            if (!resp.isSuccessful) throw RuntimeException("backend_http_${resp.code}: $txt")
+            val json = try { JSONObject(txt) } catch (_: Exception) { null }
+            val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
+            val title = json?.optString("title")
+            val summary = json?.optString("summary")
+            return CombinedOut(text, title, summary, "remote:openai")
+        }
     }
 
     
@@ -98,28 +112,5 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
         }
     }
 
-    private fun runOpenAITranscription(url: String, key: String, model: String, audioUri: String): String {
-        val uri = Uri.parse(audioUri)
-        val tmp = File.createTempFile("ts_", ".m4a", applicationContext.cacheDir)
-        applicationContext.contentResolver.openInputStream(uri)?.use { input ->
-            tmp.outputStream().use { input.copyTo(it) }
-        } ?: throw IllegalStateException("no audio input")
-        val fileBody = tmp.asRequestBody("audio/mp4".toMediaType())
-        val form = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("file", "audio.m4a", fileBody)
-            .addFormDataPart("model", model)
-            .build()
-        val req = Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer $key")
-            .post(form)
-            .build()
-        client.newCall(req).execute().use { resp ->
-            val txt = resp.body?.string() ?: ""
-            if (!resp.isSuccessful) throw RuntimeException("openai_http_${resp.code}: $txt")
-            val json = try { JSONObject(txt) } catch (_: Exception) { null }
-            val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
-            return text
-        }
-    }
+    
 }

@@ -29,7 +29,7 @@ android {
         buildConfigField("String", "DEEPSEEK_BASE_URL", "\"$deepseekBase\"")
         val deepseekModel = props.getProperty("DEEPSEEK_MODEL") ?: "deepseek-chat"
         buildConfigField("String", "DEEPSEEK_MODEL", "\"$deepseekModel\"")
-        val backendTranscribeUrl = props.getProperty("BACKEND_TRANSCRIBE_URL") ?: ""
+        val backendTranscribeUrl = props.getProperty("BACKEND_TRANSCRIBE_URL") ?: "https://android-recorder-backend.onrender.com/"
         buildConfigField("String", "BACKEND_TRANSCRIBE_URL", "\"$backendTranscribeUrl\"")
         val whisperUrl = props.getProperty("WHISPER_MODEL_URL") ?: ""
         buildConfigField("String", "WHISPER_MODEL_URL", "\"$whisperUrl\"")
