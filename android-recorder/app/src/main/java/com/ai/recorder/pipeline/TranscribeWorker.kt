@@ -21,9 +21,15 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.io.FileNotFoundException
+import java.util.concurrent.TimeUnit
 
 class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(appContext, params) {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(40, TimeUnit.SECONDS)
+        .build()
 
     override fun doWork(): Result {
         val sessionId = inputData.getString("sessionId") ?: return Result.failure()
@@ -86,6 +92,7 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
             val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
             val title = json?.optString("title")
             val summary = json?.optString("summary")
+            if (text.isBlank()) throw RuntimeException("backend_empty_output")
             return CombinedOut(text, title, summary, "remote:openai")
         }
     }
