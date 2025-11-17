@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate-complete.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-build.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-configure.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-download.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-install.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-mkdir.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-patch.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-test.rule"
+		},
+		{
+			"file" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"whispercpp-populate"
+		],
+		"name" : "whispercpp-populate"
+	}
+}

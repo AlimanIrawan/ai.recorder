@@ -1,0 +1,5 @@
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/ggml.h
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/ggml-alloc.h
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/ggml-backend.h
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/ggml-quants.h
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/whisper.h

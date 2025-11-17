@@ -18,28 +18,15 @@ class UploadWorker(appContext: Context, params: WorkerParameters) : Worker(appCo
         Log.d("UploadWorker", "start name=$name mime=$mime uri=$uriStr")
         setProgressAsync(androidx.work.Data.Builder().putString("name", name).putString("mime", mime).putString("uri", uriStr).build())
         val backendUrl = BuildConfig.BACKEND_UPLOAD_URL
-        val resp = if (backendUrl.isNotEmpty()) {
-            try {
-                BackendUploader().upload(backendUrl, folderId, name, mime, applicationContext.contentResolver, uri)
-            } catch (e: Exception) {
-                Log.e("UploadWorker", "backend upload error: ${e.message}")
-                DriveUploader.UploadResponse(false, -1, e.message)
-            }
-        } else {
-            val auth = DriveAuth(applicationContext)
-            val token = try {
-                auth.getAccessToken()
-            } catch (e: Exception) {
-                Log.e("UploadWorker", "token error: ${e.message}")
-                return Result.retry()
-            }
-            val uploader = DriveUploader({ token })
-            try {
-                uploader.uploadMultipart(folderId, name, mime, applicationContext.contentResolver, uri)
-            } catch (e: Exception) {
-                Log.e("UploadWorker", "upload error: ${e.message}")
-                DriveUploader.UploadResponse(false, -1, e.message)
-            }
+        if (backendUrl.isEmpty()) {
+            Log.e("UploadWorker", "missing BACKEND_UPLOAD_URL for OAuth upload")
+            return Result.failure()
+        }
+        val resp = try {
+            BackendUploader().upload(backendUrl, folderId, name, mime, applicationContext.contentResolver, uri)
+        } catch (e: Exception) {
+            Log.e("UploadWorker", "backend upload error: ${e.message}")
+            DriveUploader.UploadResponse(false, -1, e.message)
         }
         setProgressAsync(androidx.work.Data.Builder().putInt("code", resp.code).build())
         val out = androidx.work.Data.Builder().putString("name", name).putString("mime", mime).putInt("code", resp.code).putString("body", resp.body ?: "").build()

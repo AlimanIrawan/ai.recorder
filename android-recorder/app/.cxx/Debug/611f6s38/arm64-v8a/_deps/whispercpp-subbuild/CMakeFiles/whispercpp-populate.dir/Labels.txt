@@ -1,0 +1,14 @@
+# Target labels
+ whispercpp-populate
+# Source files and their labels
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate-complete.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-build.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-configure.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-download.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-install.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-mkdir.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-patch.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-test.rule
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-update.rule

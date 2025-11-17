@@ -1,0 +1,3 @@
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/CMakeLists.txt
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/bindings/CMakeLists.txt
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/src/main/cpp/CMakeLists.txt

@@ -1,0 +1,56 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 765,
+				"parent" : 0
+			}
+		]
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisper.so"
+			],
+			"targetId" : "whisper::@9f6a77d9e6af496660a3",
+			"targetIndex" : 0,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"paths" : 
+			[
+				"/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/ggml.h",
+				"/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/whisper.h"
+			],
+			"type" : "file"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "_deps/whispercpp-build",
+		"source" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src"
+	}
+}

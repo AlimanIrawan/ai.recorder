@@ -1,0 +1,27 @@
+# ninja log v5
+912	1061	1763308549300843680	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	e375ef0dec1c13a7
+0	911	1763308549148395188	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	ab1c1635316ab4a8
+114	931	1763312737273501971	_deps/whispercpp-build/CMakeFiles/whisper.dir/ggml-alloc.c.o	30227c016ce4a0a
+105	990	1763312737336345417	_deps/whispercpp-build/CMakeFiles/whisper.dir/ggml-backend.c.o	4e9ea6e8f4d92ca1
+106	1939	1763312738287556580	_deps/whispercpp-build/CMakeFiles/whisper.dir/ggml-quants.c.o	f2ece8ea93781e2b
+111	2879	1763312739209013420	_deps/whispercpp-build/CMakeFiles/whisper.dir/ggml.c.o	959ed4af2619300b
+115	9003	1763312745290591762	_deps/whispercpp-build/CMakeFiles/whisper.dir/whisper.cpp.o	2ebf99db2eb4fed3
+3	1179	1763312892011410716	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisper.so	a9544e34f8db955
+5	1829	1763312892716685980	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+1829	1930	1763312892825500626	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+69	7786	1763313588835043998	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+7807	8894	1763313589982044414	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+9	4367	1763314240126786257	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+4367	4797	1763314243706459803	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+4	1203	1763315645792731553	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+1205	1442	1763315646040822221	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+3	2700	1763317388548656616	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+2701	3011	1763317390375671878	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+19	3254	1763317802123322210	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+3255	3509	1763317803419832349	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+5	1457	1763318333885999878	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+1458	1677	1763318334121532604	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+22	2094	1763318628689745584	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+2095	2279	1763318629521767632	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5
+20	1989	1763348444283113656	CMakeFiles/whisperbridge.dir/native-lib.cpp.o	30d4a260491ca882
+1990	2216	1763348444800134578	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so	794471aada073b5

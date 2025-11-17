@@ -4,3 +4,9 @@ frontend/.next/
 backend/uploads/
 .env
 frontend/.env
+android-recorder/app/src/main/assets/sa.json
+android-recorder/app/build/
+android-recorder/app/.cxx/
+android-recorder/.gradle/
+android-recorder/.idea/
+android-recorder/build/

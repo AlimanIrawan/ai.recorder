@@ -1,0 +1,120 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.6.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "_deps/whispercpp-build",
+					"childIndexes" : 
+					[
+						2
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-_deps.whispercpp-build-Debug-2e4d3c095a3ef3e404a2.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "_deps/whispercpp-build/bindings",
+					"jsonFile" : "directory-_deps.whispercpp-build.bindings-Debug-590bc6741600773f80b3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 1,
+					"source" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/bindings"
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "whisperbridge",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1,
+						2
+					],
+					"name" : "whisper.cpp",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "whisper::@9f6a77d9e6af496660a3",
+					"jsonFile" : "target-whisper-Debug-a2fd4e97157b00cdfc89.json",
+					"name" : "whisper",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "whisperbridge::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-whisperbridge-Debug-8b6a632e7dc8c720a87c.json",
+					"name" : "whisperbridge",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a",
+		"source" : "/Users/LW/Documents/AIPLUS/2511 AI\u8bb0\u5f55\u5458/android-recorder/app/src/main/cpp"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

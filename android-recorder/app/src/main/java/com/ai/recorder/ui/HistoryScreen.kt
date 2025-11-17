@@ -101,12 +101,9 @@ private fun HistoryItem(s: SessionEntity, onOpen: (SessionEntity) -> Unit) {
         Spacer(Modifier.height(2.dp))
         val audioLabel = when {
             !s.transcribeError.isNullOrBlank() -> "失败"
-            s.audioState == com.ai.recorder.data.AudioState.none && !s.audioUri.isNullOrBlank() -> "待转录"
-            else -> when (s.audioState) {
-                com.ai.recorder.data.AudioState.none -> "无音频"
-                com.ai.recorder.data.AudioState.transcribing -> "转录中"
-                com.ai.recorder.data.AudioState.done -> "完成转录"
-            }
+            s.audioState == com.ai.recorder.data.AudioState.done -> "完成转录"
+            s.audioUri.isNullOrBlank() -> "无音频"
+            else -> "转录中"
         }
         val src = s.transcribeSource ?: ""
         val err = s.transcribeError ?: ""
@@ -118,9 +115,7 @@ private fun HistoryItem(s: SessionEntity, onOpen: (SessionEntity) -> Unit) {
         Text(text = stateLine, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color(0xFF888888))
         val summaryStateLabel = when {
             !s.summaryError.isNullOrBlank() -> "失败"
-            s.summaryState == com.ai.recorder.data.SummaryState.none && !s.transcript.isNullOrBlank() -> "排队中"
-            s.summaryState == com.ai.recorder.data.SummaryState.waiting_network -> "等待联网"
-            s.summaryState == com.ai.recorder.data.SummaryState.done -> "已完成"
+            !s.summary.isNullOrBlank() -> "已完成"
             else -> "无"
         }
         val summarySnippet = when {

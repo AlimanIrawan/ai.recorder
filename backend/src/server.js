@@ -112,6 +112,46 @@ function toNumberOrNull(v) {
   return Number.isNaN(n) ? null : n;
 }
 
+function unique(arr) {
+  const set = new Set(arr.filter(Boolean));
+  return Array.from(set);
+}
+
+function parseStructuredNote(noteText) {
+  const raw = String(noteText || "");
+  const lines = raw.split(/\r?\n/);
+  const nonEmpty = lines.map((l) => l.trim()).filter((l) => l.length > 0);
+  const firstLine = nonEmpty[0] || null;
+  const secondLine = nonEmpty[1] || null;
+  const timeISO = firstLine ? normalizeStartedAt(firstLine) : new Date().toISOString();
+  const location = secondLine || null;
+  let people = [];
+  let hashtags = [];
+  for (const l of nonEmpty) {
+    const mPep = l.match(/^人员[:：]\s*(.*)$/);
+    if (mPep && mPep[1]) {
+      people = mPep[1].split(/[、,，\s]+/).map((x) => x.trim()).filter((x) => x.length > 0);
+    }
+    const reTag = /(^|\s)#([^\s#]+)/g;
+    let t;
+    while ((t = reTag.exec(l)) !== null) {
+      hashtags.push(`#${t[2]}`);
+    }
+  }
+  people = unique(people);
+  hashtags = unique(hashtags);
+  let note = null;
+  const idx = raw.indexOf("笔记：");
+  const idx2 = idx >= 0 ? idx : raw.indexOf("笔记:");
+  if (idx2 >= 0) {
+    note = raw.slice(idx2).replace(/^笔记[:：]\s*/u, "");
+  } else {
+    const bodyLines = lines.slice(2).filter((l) => !/^人员[:：]/.test(l.trim()));
+    note = bodyLines.join("\n").trim();
+  }
+  return { timeISO, location, people, hashtags, note };
+}
+
 app.get("/", (req, res) => {
   const body = `<h1>音频上传与转录</h1><div>POST 到 <code>/api/upload-audio</code> 以 <code>multipart/form-data</code> 方式上传音频与元数据。</div>`;
   res.set("Content-Type", "text/html; charset=utf-8");
@@ -171,36 +211,36 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
     const tr = await transcribeFile(file.path, openai_key);
     let summaryBlock = "";
     const deepseekKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
-    if (!deepseekKey) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
-    const ds = await deepseekSummarize({
-      text: tr.text,
-      meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-      apiKey: deepseekKey,
-      baseUrl: process.env.DEEPSEEK_BASE_URL,
-      model: process.env.DEEPSEEK_MODEL,
-    });
-    const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
-    let sectionsHtml = "";
-    if (Array.isArray(ds.sections) && ds.sections.length > 0) {
-      sectionsHtml = ds.sections
-        .map((sec) => {
-          const bullets = Array.isArray(sec?.bullets) ? sec.bullets.map((b) => `<li>${b}</li>`).join("") : "";
-          return `<h2 style=\"font-size:16px;margin:12px 0 4px\">${sec?.heading || "要点"}</h2><ul>${bullets}</ul>`;
-        })
-        .join("");
+    let ds = null;
+    if (deepseekKey) {
+      ds = await deepseekSummarize({
+        text: tr.text,
+        meta: { started_at, duration_seconds, latitude, longitude, accuracy },
+        apiKey: deepseekKey,
+        baseUrl: process.env.DEEPSEEK_BASE_URL,
+        model: process.env.DEEPSEEK_MODEL,
+      });
+      const tagsLine = Array.isArray(ds.tags) ? ds.tags.join(" ") : "";
+      let sectionsHtml = "";
+      if (Array.isArray(ds.sections) && ds.sections.length > 0) {
+        sectionsHtml = ds.sections
+          .map((sec) => {
+            const bullets = Array.isArray(sec?.bullets) ? sec.bullets.map((b) => `<li>${b}</li>`).join("") : "";
+            return `<h2 style=\"font-size:16px;margin:12px 0 4px\">${sec?.heading || "要点"}</h2><ul>${bullets}</ul>`;
+          })
+          .join("");
+      }
+      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>总览：</strong><pre>${ds.summary || ""}</pre>${sectionsHtml}<div><strong>话题：</strong>${tagsLine}</div>`;
     }
-    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds.title || ""}</div><div><strong>总览：</strong><pre>${ds.summary || ""}</pre>${sectionsHtml}<div><strong>话题：</strong>${tagsLine}</div>`;
     await saveRecordToSupabase({
-      text: tr.text,
-      language: tr.language || null,
-      summary: ds?.summary || null,
+      time: normalizeStartedAt(started_at),
+      location: null,
+      people: null,
+      hashtags: null,
       title: ds?.title || null,
-      tags: Array.isArray(ds?.tags) ? ds.tags : null,
-      started_at: normalizeStartedAt(started_at),
-      duration_seconds: toNumberOrNull(duration_seconds),
-      latitude: toNumberOrNull(latitude),
-      longitude: toNumberOrNull(longitude),
-      accuracy: toNumberOrNull(accuracy),
+      note: null,
+      summary: ds?.summary || null,
+      transcript: tr.text,
       audio_url: null,
     });
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
@@ -239,11 +279,21 @@ app.post("/upload", upload.single("file"), async (req, res) => {
     oauth2.setCredentials({ refresh_token: refreshToken });
     const drive = google.drive({ version: "v3", auth: oauth2 });
     const bodyStream = fs.createReadStream(file.path);
-    const resp = await drive.files.create({
+    const createResp = await drive.files.create({
       requestBody: { name, parents: [folderId], mimeType: mime },
       media: { mimeType: mime, body: bodyStream },
+      fields: "id,name,mimeType"
     });
-    res.status(200).send(JSON.stringify({ id: resp?.data?.id }));
+    const id = createResp?.data?.id;
+    if (!id) throw new Error("drive create failed");
+    const metaResp = await drive.files.get({ fileId: id, fields: "id,name,mimeType,createdTime" });
+    const fileMeta = metaResp?.data || { id, name, mimeType: mime };
+    try {
+      const result = await processDriveFileWithNote({ drive, folderId }, fileMeta);
+      res.status(200).send(JSON.stringify({ id, processed: true, skipped: !!result?.skipped }));
+    } catch (err) {
+      res.status(200).send(JSON.stringify({ id, processed: false, error: String(err?.message || err) }));
+    }
   } catch (e) {
     const msg = String(e?.message || e);
     let details = undefined;
@@ -252,6 +302,8 @@ app.post("/upload", upload.single("file"), async (req, res) => {
       details = obj?.response?.data ?? obj;
     } catch {}
     res.status(500).send(JSON.stringify({ error: msg, details }));
+  } finally {
+    if (req?.file?.path) fs.unlink(req.file.path, () => {});
   }
 });
 
@@ -276,36 +328,36 @@ app.post("/api/upload-audio-url", express.json({ limit: "1mb" }), async (req, re
     const tr = await transcribeFile(tempPath, openai_key);
     let summaryBlock = "";
     const deepseekKey2 = deepseek_key || process.env.DEEPSEEK_API_KEY;
-    if (!deepseekKey2) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
-    const ds2 = await deepseekSummarize({
-      text: tr.text,
-      meta: { started_at, duration_seconds, latitude, longitude, accuracy },
-      apiKey: deepseekKey2,
-      baseUrl: process.env.DEEPSEEK_BASE_URL,
-      model: process.env.DEEPSEEK_MODEL,
-    });
-    const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
-    let sectionsHtml2 = "";
-    if (Array.isArray(ds2.sections) && ds2.sections.length > 0) {
-      sectionsHtml2 = ds2.sections
-        .map((sec) => {
-          const bullets = Array.isArray(sec?.bullets) ? sec.bullets.map((b) => `<li>${b}</li>`).join("") : "";
-          return `<h2 style=\"font-size:16px;margin:12px 0 4px\">${sec?.heading || "要点"}</h2><ul>${bullets}</ul>`;
-        })
-        .join("");
+    let ds2 = null;
+    if (deepseekKey2) {
+      ds2 = await deepseekSummarize({
+        text: tr.text,
+        meta: { started_at, duration_seconds, latitude, longitude, accuracy },
+        apiKey: deepseekKey2,
+        baseUrl: process.env.DEEPSEEK_BASE_URL,
+        model: process.env.DEEPSEEK_MODEL,
+      });
+      const tagsLine2 = Array.isArray(ds2.tags) ? ds2.tags.join(" ") : "";
+      let sectionsHtml2 = "";
+      if (Array.isArray(ds2.sections) && ds2.sections.length > 0) {
+        sectionsHtml2 = ds2.sections
+          .map((sec) => {
+            const bullets = Array.isArray(sec?.bullets) ? sec.bullets.map((b) => `<li>${b}</li>`).join("") : "";
+            return `<h2 style=\"font-size:16px;margin:12px 0 4px\">${sec?.heading || "要点"}</h2><ul>${bullets}</ul>`;
+          })
+          .join("");
+      }
+      summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>总览：</strong><pre>${ds2.summary || ""}</pre>${sectionsHtml2}<div><strong>话题：</strong>${tagsLine2}</div>`;
     }
-    summaryBlock = `<h1>摘要与标题</h1><div><strong>标题：</strong>${ds2.title || ""}</div><div><strong>总览：</strong><pre>${ds2.summary || ""}</pre>${sectionsHtml2}<div><strong>话题：</strong>${tagsLine2}</div>`;
     await saveRecordToSupabase({
-      text: tr.text,
-      language: tr.language || null,
-      summary: ds2?.summary || null,
+      time: normalizeStartedAt(started_at),
+      location: null,
+      people: null,
+      hashtags: null,
       title: ds2?.title || null,
-      tags: Array.isArray(ds2?.tags) ? ds2.tags : null,
-      started_at: normalizeStartedAt(started_at),
-      duration_seconds: toNumberOrNull(duration_seconds),
-      latitude: toNumberOrNull(latitude),
-      longitude: toNumberOrNull(longitude),
-      accuracy: toNumberOrNull(accuracy),
+      note: null,
+      summary: ds2?.summary || null,
+      transcript: tr.text,
       audio_url: audio_url || null,
     });
     const metaHtml = formatMeta({ started_at, duration_seconds, latitude, longitude, accuracy, language: tr.language });
@@ -438,8 +490,8 @@ async function saveRecordToSupabase(record) {
   const sb = getSupabase();
   if (!sb) return { skipped: true };
   let { data, error } = await sb.from("records").insert(record).select().single();
-  if (error && (/note_text|drive_file_id|file_name/.test(String(error.message || error)))) {
-    const { note_text, drive_file_id, file_name, ...rest } = record || {};
+  if (error && (/note_text|drive_file_id|file_name|people|hashtags|time|location|note|summary|transcript|title/.test(String(error.message || error)))) {
+    const { note_text, drive_file_id, file_name, people, hashtags, time, location, note, summary, transcript, title, ...rest } = record || {};
     const r2 = await sb.from("records").insert(rest).select().single();
     if (r2.error) throw new Error(r2.error.message);
     return { id: r2.data?.id };
@@ -509,15 +561,17 @@ async function downloadDriveFile(drive, fileId, fileName) {
 }
 
 async function processDriveFile(ctx, file) {
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (!deepseekKey) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
   const done = await existsDriveRecord(file.id);
   if (done) return { skipped: true, id: file.id };
   const temp = await downloadDriveFile(ctx.drive, file.id, file.name);
   try {
     const tr = await transcribeFile(temp);
-    const ds = await deepseekSummarize({ text: tr.text, meta: { started_at: file.createdTime }, apiKey: deepseekKey, baseUrl: process.env.DEEPSEEK_BASE_URL, model: process.env.DEEPSEEK_MODEL });
-    await saveRecordToSupabase({ text: tr.text, language: tr.language || null, summary: ds?.summary || null, title: ds?.title || null, tags: Array.isArray(ds?.tags) ? ds.tags : null, started_at: normalizeStartedAt(file.createdTime), duration_seconds: null, latitude: null, longitude: null, accuracy: null, audio_url: `drive:${file.id}` });
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    let ds = null;
+    if (deepseekKey) {
+      ds = await deepseekSummarize({ text: tr.text, meta: { started_at: file.createdTime }, apiKey: deepseekKey, baseUrl: process.env.DEEPSEEK_BASE_URL, model: process.env.DEEPSEEK_MODEL });
+    }
+    await saveRecordToSupabase({ time: normalizeStartedAt(file.createdTime), location: null, people: null, hashtags: null, title: ds?.title || null, note: null, summary: ds?.summary || null, transcript: tr.text, audio_url: `drive:${file.id}` });
     return { skipped: false, id: file.id };
   } finally {
     fs.unlink(temp, () => {});
@@ -526,12 +580,26 @@ async function processDriveFile(ctx, file) {
 
 // 增强版：同时读取同名 .txt 记录并合并到摘要/标题中
 async function processDriveFileWithNote(ctx, file) {
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  if (!deepseekKey) throw new Error("缺少 DeepSeek API Key（请在环境变量设置 DEEPSEEK_API_KEY）");
   const done = await existsDriveRecord(file.id);
   if (done) return { skipped: true, id: file.id };
-  const temp = await downloadDriveFile(ctx.drive, file.id, file.name);
   const base = String(file.name || "").replace(/\.[^./]+$/, "");
+  const mt = String(file?.mimeType || "");
+  const isAudio = isAudioFile(file);
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  if (!isAudio) {
+    const txtPath = await downloadDriveFile(ctx.drive, file.id, file.name);
+    try {
+      let noteTextMain = fs.readFileSync(txtPath, { encoding: "utf-8" });
+      if (typeof noteTextMain === "string") noteTextMain = noteTextMain.trim();
+      const parsed = parseStructuredNote(noteTextMain);
+      const titleOut = parsed.note ? (parsed.note.split(/\r?\n/)[0]?.trim() || null) : (noteTextMain.split(/\r?\n/)[0]?.trim() || null);
+      await saveRecordToSupabase({ time: parsed.timeISO, location: parsed.location, people: parsed.people, hashtags: parsed.hashtags, title: titleOut, note: parsed.note, summary: null, transcript: null, audio_url: null });
+      return { skipped: false, id: file.id };
+    } finally {
+      fs.unlink(txtPath, () => {});
+    }
+  }
+  const temp = await downloadDriveFile(ctx.drive, file.id, file.name);
   let noteText = null;
   try {
     const q = `'${ctx.folderId}' in parents and trashed = false and name = '${base}.txt'`;
@@ -552,13 +620,17 @@ async function processDriveFileWithNote(ctx, file) {
   } catch {}
   try {
     const tr = await transcribeFile(temp);
-    const ds = await deepseekSummarize({ text: tr.text, meta: { started_at: file.createdTime, note_text: noteText || null }, apiKey: deepseekKey, baseUrl: process.env.DEEPSEEK_BASE_URL, model: process.env.DEEPSEEK_MODEL });
+    let ds = null;
+    if (deepseekKey) {
+      ds = await deepseekSummarize({ text: tr.text, meta: { started_at: file.createdTime }, apiKey: deepseekKey, baseUrl: process.env.DEEPSEEK_BASE_URL, model: process.env.DEEPSEEK_MODEL });
+    }
+    const parsed = noteText ? parseStructuredNote(noteText) : { timeISO: normalizeStartedAt(file.createdTime), location: null, people: null, hashtags: null, note: null };
     let titleOut = ds?.title || null;
-    if (!titleOut && noteText) {
-      const firstLine = noteText.split(/\r?\n/)[0]?.trim();
+    if (!titleOut && parsed.note) {
+      const firstLine = parsed.note.split(/\r?\n/)[0]?.trim();
       if (firstLine) titleOut = firstLine;
     }
-    await saveRecordToSupabase({ text: tr.text, language: tr.language || null, summary: ds?.summary || null, title: titleOut, tags: Array.isArray(ds?.tags) ? ds.tags : null, started_at: normalizeStartedAt(file.createdTime), duration_seconds: null, latitude: null, longitude: null, accuracy: null, audio_url: `drive:${file.id}`, note_text: noteText || null, drive_file_id: file.id, file_name: file.name });
+    await saveRecordToSupabase({ time: parsed.timeISO, location: parsed.location, people: parsed.people, hashtags: parsed.hashtags, title: titleOut, note: parsed.note, summary: ds?.summary || null, transcript: tr.text, audio_url: `drive:${file.id}` });
     return { skipped: false, id: file.id };
   } finally {
     fs.unlink(temp, () => {});

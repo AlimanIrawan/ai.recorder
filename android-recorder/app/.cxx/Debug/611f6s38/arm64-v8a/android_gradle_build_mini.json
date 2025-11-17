@@ -1,0 +1,35 @@
+{
+  "buildFiles": [
+    "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/CMakeLists.txt",
+    "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-src/bindings/CMakeLists.txt",
+    "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/LW/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/LW/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "whisper::@9f6a77d9e6af496660a3": {
+      "artifactName": "whisper",
+      "abi": "arm64-v8a",
+      "output": "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisper.so",
+      "runtimeFiles": []
+    },
+    "whisperbridge::@6890427a1f51a3e7e1df": {
+      "artifactName": "whisperbridge",
+      "abi": "arm64-v8a",
+      "output": "/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/build/intermediates/cxx/Debug/611f6s38/obj/arm64-v8a/libwhisperbridge.so",
+      "runtimeFiles": []
+    }
+  }
+}

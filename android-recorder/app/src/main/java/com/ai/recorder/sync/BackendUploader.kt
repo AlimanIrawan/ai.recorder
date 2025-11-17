@@ -24,6 +24,15 @@ class BackendUploader(private val client: OkHttpClient = OkHttpClient()) {
         val req = Request.Builder().url(url).post(form).build()
         val resp = client.newCall(req).execute()
         val bodyStr = resp.body?.string()
-        return DriveUploader.UploadResponse(resp.isSuccessful, resp.code, bodyStr)
+        return try {
+            val obj = org.json.JSONObject(bodyStr ?: "{}")
+            if (obj.has("processed") && !obj.optBoolean("processed")) {
+                DriveUploader.UploadResponse(false, resp.code, bodyStr)
+            } else {
+                DriveUploader.UploadResponse(resp.isSuccessful, resp.code, bodyStr)
+            }
+        } catch (_: Exception) {
+            DriveUploader.UploadResponse(resp.isSuccessful, resp.code, bodyStr)
+        }
     }
 }

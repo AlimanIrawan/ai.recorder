@@ -1,0 +1,3 @@
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate.dir
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/edit_cache.dir
+/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/rebuild_cache.dir

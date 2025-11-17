@@ -1,0 +1,21 @@
+# ninja log v5
+0	100	1763312715226011909	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-mkdir	3d0e7d9c17197648
+0	100	1763312715226011909	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-mkdir	3d0e7d9c17197648
+101	7957	1763312723082498019	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-download	8617be2e86b73141
+101	7957	1763312723082498019	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-download	8617be2e86b73141
+7957	8003	0	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-update	84afce8d06ecccd0
+7957	8003	0	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-update	84afce8d06ecccd0
+8003	8015	1763312723140567199	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-patch	5cacd18d91893485
+8003	8015	1763312723140567199	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-patch	5cacd18d91893485
+8015	8027	1763312723151741570	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-configure	728329ff3b22f31a
+8015	8027	1763312723151741570	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-configure	728329ff3b22f31a
+8027	8037	1763312723163149519	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-build	f4d3dff186c08a54
+8027	8037	1763312723163149519	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-build	f4d3dff186c08a54
+8037	8048	1763312723173766610	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-install	e928f7afbb6dda64
+8037	8048	1763312723173766610	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-install	e928f7afbb6dda64
+8048	8058	1763312723184098751	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-test	905010d8aca1cb67
+8048	8058	1763312723184098751	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-test	905010d8aca1cb67
+8058	8072	1763312723198223054	CMakeFiles/whispercpp-populate-complete	8cab4b6b915a0beb
+8058	8072	1763312723198223054	whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-done	8cab4b6b915a0beb
+8058	8072	1763312723198223054	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/CMakeFiles/whispercpp-populate-complete	8cab4b6b915a0beb
+8058	8072	1763312723198223054	/Users/LW/Documents/AIPLUS/2511 AI记录员/android-recorder/app/.cxx/Debug/611f6s38/arm64-v8a/_deps/whispercpp-subbuild/whispercpp-populate-prefix/src/whispercpp-populate-stamp/whispercpp-populate-done	8cab4b6b915a0beb
