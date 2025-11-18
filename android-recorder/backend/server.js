@@ -48,6 +48,7 @@ app.post('/api/transcribe', upload.single('file'), async (req, res) => {
   try {
     const file = req.file
     if (!file) return res.status(400).json({ error: 'file missing' })
+    console.log('/api/transcribe', { hasFile: !!file, name: file.originalname, size: file.size })
     const client = getOpenAI()
     const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
     const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
@@ -64,6 +65,7 @@ app.post('/api/transcribe-and-summarize', upload.single('file'), async (req, res
   try {
     const file = req.file
     if (!file) return res.status(400).json({ error: 'file missing' })
+    console.log('/api/transcribe-and-summarize', { hasFile: !!file, name: file.originalname, size: file.size })
     const client = getOpenAI()
     const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
     const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
@@ -98,3 +100,9 @@ app.post('/api/summarize', async (req, res) => {
 
 const port = process.env.PORT || 3000
 app.listen(port, () => {})
+app.get('/api/transcribe', (req, res) => {
+  res.status(405).json({ error: 'use POST' })
+})
+app.get('/api/transcribe-and-summarize', (req, res) => {
+  res.status(405).json({ error: 'use POST' })
+})
