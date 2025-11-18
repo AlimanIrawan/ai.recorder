@@ -68,29 +68,42 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
     private data class CombinedOut(val text: String, val title: String?, val summary: String?, val source: String)
 
     private fun runBackendTranscribeAndSummarize(audioUri: String): CombinedOut {
-        val base = BuildConfig.BACKEND_TRANSCRIBE_URL
-        if (base.isEmpty()) throw RuntimeException("backend_url_missing")
-        val url = if (base.endsWith("/")) base + "api/transcribe-and-summarize" else "$base/api/transcribe-and-summarize"
+        val base0 = BuildConfig.BACKEND_TRANSCRIBE_URL
+        if (base0.isEmpty()) throw RuntimeException("backend_url_missing")
+        val base = base0.trimEnd('/')
+        val candidates = listOf(
+            "$base/api/transcribe-and-summarize",
+            "$base/transcribe-and-summarize"
+        )
         val uri = Uri.parse(audioUri)
         val tmp = File.createTempFile("ts_", ".m4a", applicationContext.cacheDir)
         applicationContext.contentResolver.openInputStream(uri)?.use { input ->
             tmp.outputStream().use { input.copyTo(it) }
         } ?: throw IllegalStateException("no audio input")
-        val body = tmp.asRequestBody("audio/mp4".toMediaType())
+        val fileBody = tmp.asRequestBody("audio/mp4".toMediaType())
         val form = MultipartBody.Builder().setType(MultipartBody.FORM)
-            .addFormDataPart("file", "audio.m4a", body)
+            .addFormDataPart("file", "audio.m4a", fileBody)
             .build()
-        val req = Request.Builder().url(url).post(form).build()
-        client.newCall(req).execute().use { resp ->
-            val txt = resp.body?.string() ?: ""
-            if (!resp.isSuccessful) throw RuntimeException("backend_http_${resp.code}: $txt")
-            val json = try { JSONObject(txt) } catch (_: Exception) { null }
-            val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
-            val title = json?.optString("title")
-            val summary = json?.optString("summary")
-            if (text.isBlank()) throw RuntimeException("backend_empty_output")
-            return CombinedOut(text, title, summary, "remote:openai")
+        var lastTxt = ""
+        for (u in candidates) {
+            val req = Request.Builder().url(u).post(form).build()
+            client.newCall(req).execute().use { resp ->
+                val txt = resp.body?.string() ?: ""
+                lastTxt = txt
+                if (resp.code == 404) {
+                    // try next candidate
+                } else {
+                if (!resp.isSuccessful) throw RuntimeException("backend_http_${resp.code}: $txt")
+                val json = try { JSONObject(txt) } catch (_: Exception) { null }
+                val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
+                val title = json?.optString("title")
+                val summary = json?.optString("summary")
+                if (text.isBlank()) throw RuntimeException("backend_empty_output")
+                return CombinedOut(text, title, summary, "remote:openai")
+                }
+            }
         }
+        throw RuntimeException("backend_http_404: $lastTxt")
     }
 
     
