@@ -198,15 +198,18 @@ async function prepareParts(buffer, originalname) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'))
   const inPath = path.join(dir, 'in' + Date.now() + (path.extname(originalname || '') || '.m4a'))
   fs.writeFileSync(inPath, buffer)
+  console.log('prepareParts', { inputBytes: buffer.length })
   const max = 24 * 1024 * 1024
   if (buffer.length <= max) return { parts: [inPath], tmpDir: dir }
   const conv = path.join(dir, 'conv_' + Date.now() + '.mp3')
-  await run(ffmpeg, ['-i', inPath, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '48k', conv])
+  await run(ffmpeg, ['-i', inPath, '-vn', '-map', '0:a:0', '-ar', '16000', '-ac', '1', '-b:a', '48k', conv])
+  try { console.log('converted', { path: conv, size: fs.statSync(conv).size }) } catch {}
   const segDir = path.join(dir, 'seg')
   fs.mkdirSync(segDir)
   const pat = path.join(segDir, 'part_%03d.mp3')
   await run(ffmpeg, ['-i', conv, '-f', 'segment', '-segment_time', '600', '-reset_timestamps', '1', pat])
   const files = fs.readdirSync(segDir).map((n) => path.join(segDir, n)).sort()
+  try { console.log('segments', files.map((p) => ({ path: p, size: fs.statSync(p).size }))) } catch {}
   const parts = files.filter((p) => fs.statSync(p).size <= max)
   if (!parts.length) parts.push(conv)
   return { parts, tmpDir: dir }
@@ -231,8 +234,10 @@ async function processJob(id, buffer, originalname) {
     let idx = 0
     for (const p of prepared.parts) {
       const buf = fs.readFileSync(p)
+      try { console.log('upload_part', { idx, size: buf.length, name: path.basename(p) }) } catch {}
       const up = await toFile(buf, path.basename(p))
       const tr = await client.audio.transcriptions.create({ file: up, model })
+      try { console.log('part_text_len', { idx, len: (tr.text || '').length }) } catch {}
       texts.push(tr.text || '')
       idx += 1
       j.progress = Math.round((idx / prepared.parts.length) * 100)

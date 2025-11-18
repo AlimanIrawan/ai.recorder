@@ -80,6 +80,7 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
         applicationContext.contentResolver.openInputStream(uri)?.use { input ->
             tmp.outputStream().use { input.copyTo(it) }
         } ?: throw IllegalStateException("no audio input")
+        Log.i("TranscribeWorker", "upload tmp size=${'$'}{tmp.length()}")
         val fileBody = tmp.asRequestBody("audio/mp4".toMediaType())
         val form = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("file", "audio.m4a", fileBody)
@@ -108,13 +109,13 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
                                     val j = try { JSONObject(jtxt) } catch (_: Exception) { null }
                                     val st = j?.optString("status") ?: ""
                                     if (st == "done") {
-                                        val text = j.optString("text")
-                                        val title = j.optString("title")
-                                        val summary = j.optString("summary")
+                                        val text = j?.optString("text") ?: ""
+                                        val title = j?.optString("title")
+                                        val summary = j?.optString("summary")
                                         if (text.isBlank()) throw RuntimeException("backend_empty_output")
                                         return CombinedOut(text, title, summary, "remote:openai")
                                     } else if (st == "error") {
-                                        val err = j.optString("error")
+                                        val err = j?.optString("error") ?: "error"
                                         throw RuntimeException("backend_http_500: $err")
                                     }
                                 }
