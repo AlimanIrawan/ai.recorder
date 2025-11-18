@@ -25,10 +25,10 @@ import java.util.concurrent.TimeUnit
 
 class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(appContext, params) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(40, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(90, TimeUnit.SECONDS)
         .build()
 
     override fun doWork(): Result {
