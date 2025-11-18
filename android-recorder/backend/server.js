@@ -8,6 +8,7 @@ const axios = require('axios')
 const app = express()
 app.use(cors())
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }))
 
 const upload = multer({ storage: multer.memoryStorage() })
 
@@ -44,7 +45,7 @@ async function deepseekSummarize(text) {
 app.get('/api/ping', (req, res) => { res.json({ ok: true }) })
 
 // 1) 仅转录
-app.post('/api/transcribe', upload.single('file'), async (req, res) => {
+const transcribeHandler = async (req, res) => {
   try {
     const file = req.file
     if (!file) return res.status(400).json({ error: 'file missing' })
@@ -58,10 +59,12 @@ app.post('/api/transcribe', upload.single('file'), async (req, res) => {
     const code = e.status || 500
     res.status(code).json({ error: e.message })
   }
-})
+}
+app.post('/api/transcribe', upload.single('file'), transcribeHandler)
+app.post('/api/transcribe/', upload.single('file'), transcribeHandler)
 
 // 2) 转录 + 总结
-app.post('/api/transcribe-and-summarize', upload.single('file'), async (req, res) => {
+const transcribeAndSummarizeHandler = async (req, res) => {
   try {
     const file = req.file
     if (!file) return res.status(400).json({ error: 'file missing' })
@@ -83,7 +86,9 @@ app.post('/api/transcribe-and-summarize', upload.single('file'), async (req, res
     const code = e.status || 500
     res.status(code).json({ error: e.message })
   }
-})
+}
+app.post('/api/transcribe-and-summarize', upload.single('file'), transcribeAndSummarizeHandler)
+app.post('/api/transcribe-and-summarize/', upload.single('file'), transcribeAndSummarizeHandler)
 
 // 3) 单独总结
 app.post('/api/summarize', async (req, res) => {
