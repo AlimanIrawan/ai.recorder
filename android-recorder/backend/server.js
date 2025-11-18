@@ -136,7 +136,8 @@ function looksLikeAudio(file) {
   const name = String(file.originalname || '').toLowerCase()
   const mime = String(file.mimetype || '')
   if (mime.startsWith('audio/')) return true
-  return /\.(m4a|mp3|wav|aac|flac|ogg|webm|caf)$/i.test(name)
+  if (/aiff/i.test(mime) || /x-aiff/i.test(mime)) return true
+  return /\.(m4a|mp3|wav|aac|flac|ogg|webm|caf|aiff)$/i.test(name)
 }
 
 process.on('unhandledRejection', (err) => {
