@@ -73,7 +73,9 @@ const transcribeHandler = async (req, res) => {
         const tr = await client.audio.transcriptions.create({ file: up, model })
         texts.push(tr.text || '')
       }
-      res.json({ text: texts.join('\n') })
+      const out = (texts.join('\n') || '').trim()
+      if (!out) return res.status(422).json({ error: 'empty_transcription' })
+      res.json({ text: out })
     } finally {
       cleanupDir(prepared.tmpDir)
     }
@@ -109,7 +111,8 @@ const transcribeAndSummarizeHandler = async (req, res) => {
       const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
       console.log('openai transcribe+summarize', { baseURL: client.baseURL, model })
       const tr = await client.audio.transcriptions.create({ file: ofile, model })
-      const text = tr.text || ''
+      const text = (tr.text || '').trim()
+      if (!text) return res.status(422).json({ error: 'empty_transcription' })
       let title = ''
       let summary = ''
       try {
@@ -234,7 +237,13 @@ async function processJob(id, buffer, originalname) {
       idx += 1
       j.progress = Math.round((idx / prepared.parts.length) * 100)
     }
-    const text = texts.join('\n')
+    const text = (texts.join('\n') || '').trim()
+    if (!text) {
+      j.status = 'error'
+      j.error = 'empty_transcription'
+      j.progress = 100
+      return
+    }
     j.text = text
     try {
       const s = await deepseekSummarize(text)
@@ -242,6 +251,7 @@ async function processJob(id, buffer, originalname) {
       j.summary = s.summary
     } catch {}
     j.status = 'done'
+    j.progress = 100
   } catch (e) {
     j.status = 'error'
     j.error = e.message
