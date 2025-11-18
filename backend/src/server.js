@@ -261,6 +261,85 @@ app.post("/api/upload-audio", upload.single("file"), async (req, res) => {
   }
 });
 
+// JSON 仅转录端点：返回 { text }
+app.post("/api/transcribe", upload.single("file"), async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const file = req.file;
+    const { openai_key } = req.body ?? {};
+    if (!file) {
+      res.status(400).send(JSON.stringify({ error: "file missing" }));
+      return;
+    }
+    const tr = await transcribeFile(file.path, openai_key);
+    res.status(200).send(JSON.stringify({ text: tr.text }));
+  } catch (e) {
+    res.status(500).send(JSON.stringify({ error: String(e?.message || e) }));
+  } finally {
+    if (req?.file?.path) fs.unlink(req.file.path, () => {});
+  }
+});
+
+// JSON 转录+总结端点：返回 { text, title, summary }
+app.post("/api/transcribe-and-summarize", upload.single("file"), async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const file = req.file;
+    const { openai_key, deepseek_key, started_at, duration_seconds, latitude, longitude, accuracy } = req.body ?? {};
+    if (!file) {
+      res.status(400).send(JSON.stringify({ error: "file missing" }));
+      return;
+    }
+    const tr = await transcribeFile(file.path, openai_key);
+    let title = null;
+    let summary = null;
+    const dsKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
+    if (dsKey) {
+      const ds = await deepseekSummarize({
+        text: tr.text,
+        meta: { started_at, duration_seconds, latitude, longitude, accuracy },
+        apiKey: dsKey,
+        baseUrl: process.env.DEEPSEEK_BASE_URL,
+        model: process.env.DEEPSEEK_MODEL,
+      });
+      title = ds?.title || null;
+      summary = ds?.summary || null;
+    }
+    res.status(200).send(JSON.stringify({ text: tr.text, title, summary }));
+  } catch (e) {
+    res.status(500).send(JSON.stringify({ error: String(e?.message || e) }));
+  } finally {
+    if (req?.file?.path) fs.unlink(req.file.path, () => {});
+  }
+});
+
+// JSON 仅总结端点：输入 { text }，返回 { title, summary }
+app.post("/api/summarize", express.json({ limit: "1mb" }), async (req, res) => {
+  res.set("Content-Type", "application/json; charset=utf-8");
+  try {
+    const { text, started_at, duration_seconds, latitude, longitude, accuracy, deepseek_key } = req.body ?? {};
+    if (!text || !String(text).trim()) {
+      res.status(400).send(JSON.stringify({ error: "text missing" }));
+      return;
+    }
+    const dsKey = deepseek_key || process.env.DEEPSEEK_API_KEY;
+    if (!dsKey) {
+      res.status(200).send(JSON.stringify({ title: null, summary: null }));
+      return;
+    }
+    const ds = await deepseekSummarize({
+      text: String(text),
+      meta: { started_at, duration_seconds, latitude, longitude, accuracy },
+      apiKey: dsKey,
+      baseUrl: process.env.DEEPSEEK_BASE_URL,
+      model: process.env.DEEPSEEK_MODEL,
+    });
+    res.status(200).send(JSON.stringify({ title: ds?.title || null, summary: ds?.summary || null }));
+  } catch (e) {
+    res.status(500).send(JSON.stringify({ error: String(e?.message || e) }));
+  }
+});
+
 app.post("/upload", upload.single("file"), async (req, res) => {
   res.set("Content-Type", "application/json; charset=utf-8");
   try {
