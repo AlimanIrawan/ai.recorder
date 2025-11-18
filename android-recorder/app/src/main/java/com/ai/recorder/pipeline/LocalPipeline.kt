@@ -30,7 +30,7 @@ object LocalPipeline {
             .setInputData(data)
             .addTag("local_transcribe")
             .build()
-        wm.beginUniqueWork("transcribe_global_queue", androidx.work.ExistingWorkPolicy.APPEND, req).enqueue()
+        wm.enqueueUniqueWork("transcribe_session_$sessionId", androidx.work.ExistingWorkPolicy.REPLACE, req)
     }
 
     fun enqueueSummarize(context: Context, sessionId: String) {
