@@ -115,7 +115,19 @@ private fun HistoryItem(s: SessionEntity, onOpen: (SessionEntity) -> Unit) {
         }
         Text(text = stateLine, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color(0xFF888888))
         if (!s.audioUri.isNullOrBlank() && s.audioState != com.ai.recorder.data.AudioState.done) {
-            androidx.compose.material3.TextButton(onClick = { com.ai.recorder.pipeline.LocalPipeline.enqueueTranscription(ctx, s.sessionId, s.audioUri!!) }) { Text("重试转录") }
+            androidx.compose.material3.TextButton(onClick = {
+                try {
+                    val cm = ctx.getSystemService(android.net.ConnectivityManager::class.java)
+                    val nc = cm?.getNetworkCapabilities(cm.activeNetwork)
+                    val connected = nc?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                    if (!connected) {
+                        android.widget.Toast.makeText(ctx, "未联网，已排队", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(ctx, "已提交重试", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    com.ai.recorder.pipeline.LocalPipeline.enqueueTranscription(ctx, s.sessionId, s.audioUri!!)
+                } catch (_: Exception) {}
+            }) { Text("重试转录") }
         }
         val summaryStateLabel = when {
             !s.summaryError.isNullOrBlank() -> "失败"
