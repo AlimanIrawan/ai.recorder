@@ -114,6 +114,9 @@ private fun HistoryItem(s: SessionEntity, onOpen: (SessionEntity) -> Unit) {
             if (err.isNotBlank()) append(" — ").append(err)
         }
         Text(text = stateLine, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color(0xFF888888))
+        if (!s.audioUri.isNullOrBlank() && s.audioState != com.ai.recorder.data.AudioState.done) {
+            androidx.compose.material3.TextButton(onClick = { com.ai.recorder.pipeline.LocalPipeline.enqueueTranscription(ctx, s.sessionId, s.audioUri!!) }) { Text("重试转录") }
+        }
         val summaryStateLabel = when {
             !s.summaryError.isNullOrBlank() -> "失败"
             !s.summary.isNullOrBlank() -> "已完成"

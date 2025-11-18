@@ -7,6 +7,9 @@ import androidx.work.NetworkType
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import android.util.Log
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import java.util.concurrent.TimeUnit
 import com.ai.recorder.data.AppDatabase
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +20,10 @@ object LocalPipeline {
         val wm = WorkManager.getInstance(context)
         val constraints = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
         val data = Data.Builder().putString("sessionId", sessionId).putString("audioUri", audioUri).build()
+        val cm = context.getSystemService(ConnectivityManager::class.java)
+        val nc = cm?.getNetworkCapabilities(cm.activeNetwork)
+        val connected = nc?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        Log.i("LocalPipeline", "enqueue sid=$sessionId connected=$connected uri=$audioUri")
         val req = OneTimeWorkRequestBuilder<TranscribeWorker>()
             .setConstraints(constraints)
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
