@@ -9,6 +9,7 @@ const os = require('os')
 const path = require('path')
 const ffmpeg = require('ffmpeg-static')
 const { spawn } = require('child_process')
+const crypto = require('crypto')
 
 const app = express()
 app.use(cors())
@@ -101,31 +102,27 @@ const transcribeAndSummarizeHandler = async (req, res) => {
     if (!looksLikeAudio(file)) {
       return res.status(400).json({ error: 'unsupported media type: please upload audio file (.m4a/.mp3/.wav/...)' })
     }
-    const client = getOpenAI()
-    const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
-    console.log('openai transcribe+summarize', { baseURL: client.baseURL, model })
-    const prepared = await prepareParts(file.buffer, file.originalname || 'audio.m4a')
-    let text = ''
-    try {
-      const texts = []
-      for (const p of prepared.parts) {
-        const buf = fs.readFileSync(p)
-        const up = await toFile(buf, path.basename(p))
-        const tr = await client.audio.transcriptions.create({ file: up, model })
-        texts.push(tr.text || '')
-      }
-      text = texts.join('\n')
-    } finally {
-      cleanupDir(prepared.tmpDir)
+    const maxSync = 8 * 1024 * 1024
+    if (file.buffer.length <= maxSync) {
+      const client = getOpenAI()
+      const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
+      const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
+      console.log('openai transcribe+summarize', { baseURL: client.baseURL, model })
+      const tr = await client.audio.transcriptions.create({ file: ofile, model })
+      const text = tr.text || ''
+      let title = ''
+      let summary = ''
+      try {
+        const s = await deepseekSummarize(text)
+        title = s.title
+        summary = s.summary
+      } catch (_) {}
+      return res.json({ text, title, summary })
     }
-    let title = ''
-    let summary = ''
-    try {
-      const s = await deepseekSummarize(text)
-      title = s.title
-      summary = s.summary
-    } catch (_) {}
-    res.json({ text, title, summary })
+    const id = crypto.randomUUID()
+    jobs.set(id, { status: 'pending', progress: 0, text: '', title: '', summary: '', error: null })
+    setImmediate(() => { processJob(id, file.buffer, file.originalname).catch(() => {}) })
+    res.status(202).json({ jobId: id })
   } catch (e) {
     const code = e.status || 500
     let details = undefined
@@ -162,6 +159,11 @@ app.get('/api/transcribe', (req, res) => {
 })
 app.get('/api/transcribe-and-summarize', (req, res) => {
   res.status(405).json({ error: 'use POST' })
+})
+app.get('/api/jobs/:id', (req, res) => {
+  const j = jobs.get(req.params.id)
+  if (!j) return res.status(404).json({ error: 'not found' })
+  res.json({ id: req.params.id, status: j.status, progress: j.progress, text: j.text, title: j.title, summary: j.summary, error: j.error })
 })
 function looksLikeAudio(file) {
   if (!file) return false
@@ -211,6 +213,41 @@ function cleanupDir(dir) {
   try {
     fs.rmSync(dir, { recursive: true, force: true })
   } catch {}
+}
+
+const jobs = new Map()
+
+async function processJob(id, buffer, originalname) {
+  const client = getOpenAI()
+  const model = process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
+  const prepared = await prepareParts(buffer, originalname || 'audio.m4a')
+  const j = jobs.get(id)
+  j.status = 'processing'
+  try {
+    const texts = []
+    let idx = 0
+    for (const p of prepared.parts) {
+      const buf = fs.readFileSync(p)
+      const up = await toFile(buf, path.basename(p))
+      const tr = await client.audio.transcriptions.create({ file: up, model })
+      texts.push(tr.text || '')
+      idx += 1
+      j.progress = Math.round((idx / prepared.parts.length) * 100)
+    }
+    const text = texts.join('\n')
+    j.text = text
+    try {
+      const s = await deepseekSummarize(text)
+      j.title = s.title
+      j.summary = s.summary
+    } catch {}
+    j.status = 'done'
+  } catch (e) {
+    j.status = 'error'
+    j.error = e.message
+  } finally {
+    cleanupDir(prepared.tmpDir)
+  }
 }
 
 process.on('unhandledRejection', (err) => {

@@ -95,11 +95,42 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
                 } else {
                 if (!resp.isSuccessful) throw RuntimeException("backend_http_${resp.code}: $txt")
                 val json = try { JSONObject(txt) } catch (_: Exception) { null }
-                val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
-                val title = json?.optString("title")
-                val summary = json?.optString("summary")
-                if (text.isBlank()) throw RuntimeException("backend_empty_output")
-                return CombinedOut(text, title, summary, "remote:openai")
+                val jobId = json?.optString("jobId")
+                if (!jobId.isNullOrBlank()) {
+                    val jpaths = listOf("$base/api/jobs/$jobId", "$base/jobs/$jobId")
+                    var loops = 0
+                    while (loops < 3600) {
+                        for (jp in jpaths) {
+                            val jreq = Request.Builder().url(jp).get().build()
+                            client.newCall(jreq).execute().use { jresp ->
+                                val jtxt = jresp.body?.string() ?: ""
+                                if (jresp.isSuccessful) {
+                                    val j = try { JSONObject(jtxt) } catch (_: Exception) { null }
+                                    val st = j?.optString("status") ?: ""
+                                    if (st == "done") {
+                                        val text = j.optString("text")
+                                        val title = j.optString("title")
+                                        val summary = j.optString("summary")
+                                        if (text.isBlank()) throw RuntimeException("backend_empty_output")
+                                        return CombinedOut(text, title, summary, "remote:openai")
+                                    } else if (st == "error") {
+                                        val err = j.optString("error")
+                                        throw RuntimeException("backend_http_500: $err")
+                                    }
+                                }
+                            }
+                        }
+                        Thread.sleep(3000)
+                        loops++
+                    }
+                    throw RuntimeException("backend_http_408: poll timeout")
+                } else {
+                    val text = json?.optString("text") ?: json?.optString("transcript") ?: txt
+                    val title = json?.optString("title")
+                    val summary = json?.optString("summary")
+                    if (text.isBlank()) throw RuntimeException("backend_empty_output")
+                    return CombinedOut(text, title, summary, "remote:openai")
+                }
                 }
             }
         }
