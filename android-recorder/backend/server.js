@@ -72,6 +72,8 @@ const transcribeHandler = async (req, res) => {
 }
 app.post('/api/transcribe', upload.single('file'), transcribeHandler)
 app.post('/api/transcribe/', upload.single('file'), transcribeHandler)
+app.post('/transcribe', upload.single('file'), transcribeHandler)
+app.post('/transcribe/', upload.single('file'), transcribeHandler)
 
 // 2) 转录 + 总结
 const transcribeAndSummarizeHandler = async (req, res) => {
@@ -109,6 +111,8 @@ const transcribeAndSummarizeHandler = async (req, res) => {
 }
 app.post('/api/transcribe-and-summarize', upload.single('file'), transcribeAndSummarizeHandler)
 app.post('/api/transcribe-and-summarize/', upload.single('file'), transcribeAndSummarizeHandler)
+app.post('/transcribe-and-summarize', upload.single('file'), transcribeAndSummarizeHandler)
+app.post('/transcribe-and-summarize/', upload.single('file'), transcribeAndSummarizeHandler)
 
 // 3) 单独总结
 app.post('/api/summarize', async (req, res) => {
@@ -140,6 +144,11 @@ function looksLikeAudio(file) {
   if (mime === 'application/octet-stream') return true
   return /\.(m4a|mp3|wav|aac|flac|ogg|webm|caf|aiff)$/i.test(name)
 }
+
+app.use((req, res) => {
+  console.warn('404', req.method, req.path)
+  res.status(404).json({ error: 'not found' })
+})
 
 process.on('unhandledRejection', (err) => {
   console.error('unhandledRejection', err)
