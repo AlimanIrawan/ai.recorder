@@ -93,6 +93,9 @@ fun App() {
     var currentSessionId by remember { mutableStateOf<String?>(null) }
     var viewingSessionId by remember { mutableStateOf<String?>(null) }
     var toastMsg by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try { LocalPipeline.reEnqueuePending(context) } catch (_: Exception) {}
+    }
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { perms ->
         val audioGranted = perms[Manifest.permission.RECORD_AUDIO] == true

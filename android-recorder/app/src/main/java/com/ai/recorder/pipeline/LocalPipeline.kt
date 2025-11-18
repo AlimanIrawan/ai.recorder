@@ -8,6 +8,9 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
+import com.ai.recorder.data.AppDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object LocalPipeline {
     fun enqueueTranscription(context: Context, sessionId: String, audioUri: String) {
@@ -25,5 +28,14 @@ object LocalPipeline {
 
     fun enqueueSummarize(context: Context, sessionId: String) {
         
+    }
+
+    suspend fun reEnqueuePending(context: Context) {
+        val db = AppDatabase.get(context)
+        val pending = withContext(Dispatchers.IO) { db.sessionDao().listPendingForTranscribe() }
+        pending.forEach { s ->
+            val uri = s.audioUri ?: return@forEach
+            enqueueTranscription(context, s.sessionId, uri)
+        }
     }
 }

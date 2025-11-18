@@ -57,6 +57,12 @@ interface SessionDao {
         "ORDER BY CASE WHEN time IS NULL THEN 1 ELSE 0 END, time DESC, createdAt DESC"
     )
     fun searchAdvanced(q: String, p: String, h: String): Flow<List<SessionEntity>>
+
+    @Query(
+        "SELECT * FROM sessions WHERE " +
+        "audioUri IS NOT NULL AND (transcript IS NULL OR transcript = '') AND (transcribeError IS NULL OR transcribeError = '') AND audioState != :done"
+    )
+    suspend fun listPendingForTranscribe(done: String = AudioState.done.name): List<SessionEntity>
 }
 
 @Dao

@@ -103,7 +103,8 @@ private fun HistoryItem(s: SessionEntity, onOpen: (SessionEntity) -> Unit) {
             !s.transcribeError.isNullOrBlank() -> "失败"
             s.audioState == com.ai.recorder.data.AudioState.done -> "完成转录"
             s.audioUri.isNullOrBlank() -> "无音频"
-            else -> "转录中"
+            s.audioState == com.ai.recorder.data.AudioState.transcribing -> "转录中"
+            else -> "待转录"
         }
         val src = s.transcribeSource ?: ""
         val err = s.transcribeError ?: ""
