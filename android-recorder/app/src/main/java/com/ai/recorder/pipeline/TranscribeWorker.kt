@@ -50,16 +50,12 @@ class TranscribeWorker(appContext: Context, params: WorkerParameters) : Worker(a
             val emsg = when {
                 e is FileNotFoundException -> "audio_not_found"
                 e.message?.contains("audio_not_found") == true -> "audio_not_found"
-                e.message?.contains("local_model_missing_starting_download") == true -> "model_missing_import_required"
+                e.message?.contains("backend_http") == true -> e.message ?: "backend_error"
+                e.message?.contains("backend_empty_output") == true -> e.message ?: "backend_empty_output"
                 else -> e.message ?: "transcribe failed"
             }
             kotlinx.coroutines.runBlocking { db.sessionDao().updateTranscriptError(sessionId, emsg, "error", AudioState.none.name, now) }
-            return when {
-                e is FileNotFoundException -> Result.failure()
-                e.message?.contains("audio_not_found") == true -> Result.failure()
-                e.message?.contains("local_model_missing_starting_download") == true -> Result.failure()
-                else -> Result.retry()
-            }
+            return Result.failure()
         }
     }
 

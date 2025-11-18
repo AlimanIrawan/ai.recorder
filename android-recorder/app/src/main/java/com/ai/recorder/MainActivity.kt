@@ -95,6 +95,15 @@ fun App() {
     var toastMsg by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         try { LocalPipeline.reEnqueuePending(context) } catch (_: Exception) {}
+        try {
+            val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+            val req = android.net.NetworkRequest.Builder().addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET).build()
+            cm?.registerNetworkCallback(req, object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) {
+                    GlobalScope.launch { LocalPipeline.reEnqueuePending(context) }
+                }
+            })
+        } catch (_: Exception) {}
     }
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { perms ->
