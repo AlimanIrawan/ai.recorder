@@ -14,7 +14,9 @@ const upload = multer({ storage: multer.memoryStorage() })
 
 function getOpenAI() {
   const key = process.env.OPENAI_API_KEY
-  const baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com'
+  let baseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+  baseURL = String(baseURL).replace(/`/g, '').trim()
+  if (!/\/v1\/?$/.test(baseURL)) baseURL = baseURL.replace(/\/?$/, '/v1')
   if (!key) throw new Error('OPENAI_API_KEY missing')
   return new OpenAI({ apiKey: key, baseURL })
 }
