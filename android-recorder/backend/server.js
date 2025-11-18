@@ -4,6 +4,11 @@ const multer = require('multer')
 const OpenAI = require('openai')
 const { toFile } = require('openai/uploads')
 const axios = require('axios')
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
+const ffmpeg = require('ffmpeg-static')
+const { spawn } = require('child_process')
 
 const app = express()
 app.use(cors())
@@ -56,11 +61,21 @@ const transcribeHandler = async (req, res) => {
       return res.status(400).json({ error: 'unsupported media type: please upload audio file (.m4a/.mp3/.wav/...)' })
     }
     const client = getOpenAI()
-    const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
     const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
     console.log('openai transcribe', { baseURL: client.baseURL, model })
-    const tr = await client.audio.transcriptions.create({ file: ofile, model })
-    res.json({ text: tr.text || '' })
+    const prepared = await prepareParts(file.buffer, file.originalname || 'audio.m4a')
+    try {
+      const texts = []
+      for (const p of prepared.parts) {
+        const buf = fs.readFileSync(p)
+        const up = await toFile(buf, path.basename(p))
+        const tr = await client.audio.transcriptions.create({ file: up, model })
+        texts.push(tr.text || '')
+      }
+      res.json({ text: texts.join('\n') })
+    } finally {
+      cleanupDir(prepared.tmpDir)
+    }
   } catch (e) {
     const code = e.status || 500
     let details = undefined
@@ -87,11 +102,22 @@ const transcribeAndSummarizeHandler = async (req, res) => {
       return res.status(400).json({ error: 'unsupported media type: please upload audio file (.m4a/.mp3/.wav/...)' })
     }
     const client = getOpenAI()
-    const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
     const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
     console.log('openai transcribe+summarize', { baseURL: client.baseURL, model })
-    const tr = await client.audio.transcriptions.create({ file: ofile, model })
-    const text = tr.text || ''
+    const prepared = await prepareParts(file.buffer, file.originalname || 'audio.m4a')
+    let text = ''
+    try {
+      const texts = []
+      for (const p of prepared.parts) {
+        const buf = fs.readFileSync(p)
+        const up = await toFile(buf, path.basename(p))
+        const tr = await client.audio.transcriptions.create({ file: up, model })
+        texts.push(tr.text || '')
+      }
+      text = texts.join('\n')
+    } finally {
+      cleanupDir(prepared.tmpDir)
+    }
     let title = ''
     let summary = ''
     try {
@@ -151,6 +177,41 @@ app.use((req, res) => {
   console.warn('404', req.method, req.path)
   res.status(404).json({ error: 'not found' })
 })
+
+async function run(cmd, args) {
+  return new Promise((resolve, reject) => {
+    const p = spawn(cmd, args, { stdio: 'ignore' })
+    p.on('exit', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error('ffmpeg_error_' + code))
+    })
+    p.on('error', (err) => reject(err))
+  })
+}
+
+async function prepareParts(buffer, originalname) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-'))
+  const inPath = path.join(dir, 'in' + Date.now() + (path.extname(originalname || '') || '.m4a'))
+  fs.writeFileSync(inPath, buffer)
+  const max = 24 * 1024 * 1024
+  if (buffer.length <= max) return { parts: [inPath], tmpDir: dir }
+  const conv = path.join(dir, 'conv_' + Date.now() + '.mp3')
+  await run(ffmpeg, ['-i', inPath, '-vn', '-ar', '16000', '-ac', '1', '-b:a', '48k', conv])
+  const segDir = path.join(dir, 'seg')
+  fs.mkdirSync(segDir)
+  const pat = path.join(segDir, 'part_%03d.mp3')
+  await run(ffmpeg, ['-i', conv, '-f', 'segment', '-segment_time', '600', '-reset_timestamps', '1', pat])
+  const files = fs.readdirSync(segDir).map((n) => path.join(segDir, n)).sort()
+  const parts = files.filter((p) => fs.statSync(p).size <= max)
+  if (!parts.length) parts.push(conv)
+  return { parts, tmpDir: dir }
+}
+
+function cleanupDir(dir) {
+  try {
+    fs.rmSync(dir, { recursive: true, force: true })
+  } catch {}
+}
 
 process.on('unhandledRejection', (err) => {
   console.error('unhandledRejection', err)
