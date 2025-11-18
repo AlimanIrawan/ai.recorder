@@ -137,6 +137,7 @@ function looksLikeAudio(file) {
   const mime = String(file.mimetype || '')
   if (mime.startsWith('audio/')) return true
   if (/aiff/i.test(mime) || /x-aiff/i.test(mime)) return true
+  if (mime === 'application/octet-stream') return true
   return /\.(m4a|mp3|wav|aac|flac|ogg|webm|caf|aiff)$/i.test(name)
 }
 
