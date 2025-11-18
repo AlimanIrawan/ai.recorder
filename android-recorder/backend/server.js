@@ -49,15 +49,25 @@ const transcribeHandler = async (req, res) => {
   try {
     const file = req.file
     if (!file) return res.status(400).json({ error: 'file missing' })
-    console.log('/api/transcribe', { hasFile: !!file, name: file.originalname, size: file.size })
+    console.log('/api/transcribe', { hasFile: !!file, name: file.originalname, size: file.size, mime: file.mimetype })
+    if (!looksLikeAudio(file)) {
+      return res.status(400).json({ error: 'unsupported media type: please upload audio file (.m4a/.mp3/.wav/...)' })
+    }
     const client = getOpenAI()
     const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
     const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
+    console.log('openai transcribe', { baseURL: client.baseURL, model })
     const tr = await client.audio.transcriptions.create({ file: ofile, model })
     res.json({ text: tr.text || '' })
   } catch (e) {
     const code = e.status || 500
-    res.status(code).json({ error: e.message })
+    let details = undefined
+    try {
+      const obj = JSON.parse(JSON.stringify(e, Object.getOwnPropertyNames(e)))
+      details = obj?.response?.data ?? obj
+    } catch {}
+    console.error('/api/transcribe error', e)
+    res.status(code).json({ error: e.message, details })
   }
 }
 app.post('/api/transcribe', upload.single('file'), transcribeHandler)
@@ -68,10 +78,14 @@ const transcribeAndSummarizeHandler = async (req, res) => {
   try {
     const file = req.file
     if (!file) return res.status(400).json({ error: 'file missing' })
-    console.log('/api/transcribe-and-summarize', { hasFile: !!file, name: file.originalname, size: file.size })
+    console.log('/api/transcribe-and-summarize', { hasFile: !!file, name: file.originalname, size: file.size, mime: file.mimetype })
+    if (!looksLikeAudio(file)) {
+      return res.status(400).json({ error: 'unsupported media type: please upload audio file (.m4a/.mp3/.wav/...)' })
+    }
     const client = getOpenAI()
     const ofile = await toFile(file.buffer, file.originalname || 'audio.m4a')
     const model = req.body.model || process.env.OPENAI_WHISPER_MODEL || 'whisper-1'
+    console.log('openai transcribe+summarize', { baseURL: client.baseURL, model })
     const tr = await client.audio.transcriptions.create({ file: ofile, model })
     const text = tr.text || ''
     let title = ''
@@ -84,7 +98,13 @@ const transcribeAndSummarizeHandler = async (req, res) => {
     res.json({ text, title, summary })
   } catch (e) {
     const code = e.status || 500
-    res.status(code).json({ error: e.message })
+    let details = undefined
+    try {
+      const obj = JSON.parse(JSON.stringify(e, Object.getOwnPropertyNames(e)))
+      details = obj?.response?.data ?? obj
+    } catch {}
+    console.error('/api/transcribe-and-summarize error', e)
+    res.status(code).json({ error: e.message, details })
   }
 }
 app.post('/api/transcribe-and-summarize', upload.single('file'), transcribeAndSummarizeHandler)
@@ -110,4 +130,18 @@ app.get('/api/transcribe', (req, res) => {
 })
 app.get('/api/transcribe-and-summarize', (req, res) => {
   res.status(405).json({ error: 'use POST' })
+})
+function looksLikeAudio(file) {
+  if (!file) return false
+  const name = String(file.originalname || '').toLowerCase()
+  const mime = String(file.mimetype || '')
+  if (mime.startsWith('audio/')) return true
+  return /\.(m4a|mp3|wav|aac|flac|ogg|webm|caf)$/i.test(name)
+}
+
+process.on('unhandledRejection', (err) => {
+  console.error('unhandledRejection', err)
+})
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException', err)
 })
